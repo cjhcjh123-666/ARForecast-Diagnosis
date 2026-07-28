@@ -33,3 +33,4 @@ The runnable command is `python scripts/run_experiment.py`. The smoke test runs 
 - GPU validation used A800 devices successfully. The small baseline completed CUDA runs for all three modes on synthetic AR data.
 - The local numeric tokenizer package was renamed from `tokenizers/` to `representations/` after a Qwen3TS load exposed a namespace collision with HuggingFace's `tokenizers` package.
 - The local Wave-MoE Qwen3TS-8B checkpoint loads on an A800 and generates text, but its separate time-series encoder weights are not merged automatically by `from_pretrained`; it is not yet a valid pretrained time-series baseline.
+- The Qwen3-8B LoRA smoke completed on A800 GPU 3 with 8.44B total parameters, 7.67M trainable parameters, and one-step masked LM loss `1.260159`. The generated numeric text parsed successfully; its all-zero output is not a trained forecast result.

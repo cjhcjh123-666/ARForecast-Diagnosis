@@ -27,6 +27,20 @@ python scripts/run_experiment.py --dataset ettm1 --mode continuous_ar --ett-root
 
 Results are written to `results/<dataset>/<mode>/`.
 
+## Qwen3-8B smoke
+
+The language-pretraining factor is optional and uses the existing local
+Wave-MoE Qwen3TS checkpoint. Run it in the `wavellm` environment:
+
+```bash
+cd /9950backfile/chenjiahui/ARForecast-Diagnosis
+/public/duyinglong/miniconda3/envs/wavellm/bin/python scripts/run_qwen_smoke.py --device cuda:0
+```
+
+This performs one LoRA update on text-formatted numeric history and masks the
+prompt tokens from the language-model loss. It is a loader/training smoke test,
+not yet the formal comparison against the random-initialized baseline.
+
 ## Design
 
 See `docs/implementation.md` for tensor contracts and controlled variables. `analysis/` contains rollout, spectral, and instability diagnostics.

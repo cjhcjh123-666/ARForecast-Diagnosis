@@ -2,3 +2,7 @@ numpy
 pandas
 pyyaml
 pytest
+transformers
+accelerate
+peft
+safetensors

@@ -54,6 +54,11 @@ when the later Qwen3TS experiment imports Transformers.
 
 Provide one command for synthetic and ETTm1 experiments. The command must accept `--mode {direct,continuous_ar,text_ar}` and save JSON metrics, NPZ predictions, and a compact training log under `results/`.
 
+### `models/qwen_text_ar.py` and `scripts/run_qwen_smoke.py`
+
+- `QwenTextARForecaster`: lazily load the local Qwen3TS-8B checkpoint, attach LoRA to Q/K/V/O projections, mask prompt tokens, and train only on future numeric text.
+- `run_qwen_smoke.py`: run one GPU LoRA update and one greedy generation parse. This is an optional second-stage experiment and must use the `wavellm` environment.
+
 ## Tensor contracts
 
 - Dataset context: `[B, L]`.
