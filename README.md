@@ -41,6 +41,14 @@ This performs one LoRA update on text-formatted numeric history and masks the
 prompt tokens from the language-model loss. It is a loader/training smoke test,
 not yet the formal comparison against the random-initialized baseline.
 
+The small formal run uses the same data-window contract and reports numeric
+parse coverage separately:
+
+```bash
+/public/duyinglong/miniconda3/envs/wavellm/bin/python scripts/run_qwen_experiment.py \
+  --device cuda:0 --epochs 1 --max-train-windows 128
+```
+
 ## Design
 
 See `docs/implementation.md` for tensor contracts and controlled variables. `analysis/` contains rollout, spectral, and instability diagnostics.

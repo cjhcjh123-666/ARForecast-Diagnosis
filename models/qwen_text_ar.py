@@ -8,7 +8,7 @@ factor of the study rather than the controlled first-milestone comparison.
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Optional
 
 import torch
 
@@ -111,30 +111,52 @@ class QwenTextARForecaster:
         return float(output.loss.detach().cpu())
 
     @torch.no_grad()
-    def generate_forecast(
+    def generate_forecast_batch(
         self,
         context: torch.Tensor,
         horizon: int,
         max_new_tokens: Optional[int] = None,
-    ) -> tuple[list[list[float]], str]:
+    ) -> tuple[list[list[float]], list[str]]:
         self.model.eval()
-        prompt = (
+        prompts = [
             "Forecast the next values of this normalized time series.\n"
             "History: "
-            + self._format_values(context[0])
+            + self._format_values(row)
             + "\nForecast:"
-        )
-        encoded = self.tokenizer(prompt, return_tensors="pt", add_special_tokens=False).to(self.device)
+            for row in context
+        ]
+        encoded = self.tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            add_special_tokens=False,
+        ).to(self.device)
         generated = self.model.generate(
             **encoded,
             max_new_tokens=max_new_tokens or max(32, horizon * 8),
             do_sample=False,
             pad_token_id=self.tokenizer.pad_token_id,
         )
-        new_tokens = generated[0, encoded["input_ids"].size(1) :]
-        text = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
-        numbers = [float(match) for match in re.findall(r"[+-]?\d\.\d\d", text)]
-        return [numbers[:horizon]], text
+        input_length = encoded["input_ids"].size(1)
+        texts = []
+        forecasts = []
+        for row_index in range(generated.size(0)):
+            new_tokens = generated[row_index, input_length:]
+            text = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
+            numbers = [float(match) for match in re.findall(r"[+-]?\d\.\d\d", text)]
+            forecasts.append(numbers[:horizon])
+            texts.append(text)
+        return forecasts, texts
+
+    @torch.no_grad()
+    def generate_forecast(
+        self,
+        context: torch.Tensor,
+        horizon: int,
+        max_new_tokens: Optional[int] = None,
+    ) -> tuple[list[float], str]:
+        forecasts, texts = self.generate_forecast_batch(context[:1], horizon, max_new_tokens)
+        return forecasts[0], texts[0]
 
     def trainable_parameter_count(self) -> int:
         return sum(parameter.numel() for parameter in self.model.parameters() if parameter.requires_grad)

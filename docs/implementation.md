@@ -58,6 +58,7 @@ Provide one command for synthetic and ETTm1 experiments. The command must accept
 
 - `QwenTextARForecaster`: lazily load the local Qwen3TS-8B checkpoint, attach LoRA to Q/K/V/O projections, mask prompt tokens, and train only on future numeric text.
 - `run_qwen_smoke.py`: run one GPU LoRA update and one greedy generation parse. This is an optional second-stage experiment and must use the `wavellm` environment.
+- `run_qwen_experiment.py`: train for a small number of epochs, evaluate free generation on a fixed test window set, report parse coverage, and save adapter/prediction artifacts.
 
 ## Tensor contracts
 
