@@ -21,6 +21,13 @@ forecast, so its RMSE must not be treated as a reliable point estimate. The
 small tokenizer-matched random BPE model is a separate capacity-mismatched
 diagnostic and produced zero complete forecasts after five epochs.
 
+The first text-rollout instability check used the pretrained sine adapter and
+8 test windows. With `epsilon=0.01`, the instability index (forecast
+divergence divided by input perturbation) had mean `47.46`, median `6.12`, and
+maximum `206.79`; its correlation with per-window rollout RMSE was `0.794`.
+The result is a mechanism check only because the sample is small and the
+two-decimal text representation makes smaller perturbations invisible.
+
 Regenerate the table from saved artifacts with:
 
 ```bash

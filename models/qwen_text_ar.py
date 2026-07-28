@@ -21,6 +21,7 @@ class QwenTextARForecaster:
         model_path: str,
         device: str = "cuda:0",
         random_init: bool = False,
+        adapter_path: Optional[str] = None,
         use_lora: bool = True,
         lora_rank: int = 8,
         lora_alpha: int = 16,
@@ -42,6 +43,8 @@ class QwenTextARForecaster:
             "torch_dtype": torch.bfloat16,
             "attn_implementation": "sdpa",
         }
+        if random_init and adapter_path is not None:
+            raise ValueError("random_init cannot load an adapter without the random base weights")
         if random_init:
             config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
             self.model = AutoModelForCausalLM.from_config(config, **model_kwargs)
@@ -57,18 +60,23 @@ class QwenTextARForecaster:
 
         if use_lora:
             try:
-                from peft import LoraConfig, get_peft_model
+                from peft import LoraConfig, PeftModel, get_peft_model
             except ImportError as exc:
                 raise RuntimeError("Qwen LoRA experiments require peft") from exc
-            lora_config = LoraConfig(
-                r=lora_rank,
-                lora_alpha=lora_alpha,
-                lora_dropout=lora_dropout,
-                target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
-                bias="none",
-                task_type="CAUSAL_LM",
-            )
-            self.model = get_peft_model(self.model, lora_config)
+            if adapter_path is not None:
+                self.model = PeftModel.from_pretrained(
+                    self.model, adapter_path, is_trainable=False
+                )
+            else:
+                lora_config = LoraConfig(
+                    r=lora_rank,
+                    lora_alpha=lora_alpha,
+                    lora_dropout=lora_dropout,
+                    target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+                    bias="none",
+                    task_type="CAUSAL_LM",
+                )
+                self.model = get_peft_model(self.model, lora_config)
         if not self._uses_device_map:
             self.model.to(self.device)
         self.model.config.use_cache = False

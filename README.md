@@ -33,6 +33,16 @@ Saved Qwen artifacts can be summarized with rollout and spectral diagnostics:
 python scripts/summarize_qwen_results.py results/sweep5/synthetic_sine/qwen3_8b_lora
 ```
 
+The saved LoRA adapter can also be used for a small perturbation-sensitivity
+diagnostic:
+
+```bash
+/public/duyinglong/miniconda3/envs/wavellm/bin/python scripts/run_qwen_instability.py \
+  --device cuda:0 --dataset synthetic_sine \
+  --adapter-path results/sweep5/synthetic_sine/qwen3_8b_lora/lora_adapter \
+  --max-test-windows 8 --epsilon 0.01
+```
+
 ## Qwen3-8B smoke
 
 The language-pretraining factor is optional and uses the existing local
