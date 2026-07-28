@@ -9,7 +9,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from models.backbone import CausalTransformerBackbone
-from tokenizers.numeric import FixedWidthTextNumberTokenizer
+from representations.numeric import FixedWidthTextNumberTokenizer
 
 
 def _backbone(

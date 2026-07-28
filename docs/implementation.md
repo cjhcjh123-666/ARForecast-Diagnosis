@@ -24,6 +24,10 @@ Implement a controlled first experiment in which the Transformer depth, width, a
 - `TextARModel`: encode each normalized scalar as five character-like tokens (`+d.dd`), train next-token prediction, and decode generated token groups back to values.
 - Every model exposes `training_loss(context, future)` and `predict(context, horizon)`.
 
+The local numeric tokenizer lives under `representations/` rather than a top-level
+`tokenizers/` package, so it cannot shadow HuggingFace's `tokenizers` dependency
+when the later Qwen3TS experiment imports Transformers.
+
 ### `analysis/metrics.py`
 
 - `forecast_metrics(prediction, target)`: compute MSE, MAE, RMSE, and per-horizon RMSE.

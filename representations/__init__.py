@@ -1,4 +1,4 @@
-"""Numeric representations used by the text autoregressive baseline."""
+"""Numeric representations used by forecasting baselines."""
 
 from .numeric import FixedWidthTextNumberTokenizer
 

@@ -30,3 +30,6 @@ The runnable command is `python scripts/run_experiment.py`. The smoke test runs 
 - Synthetic AR, synthetic sine, and ETTm1 all completed direct, continuous autoregressive, and text autoregressive smoke runs.
 - The direct and continuous models produced finite `[B, H]` forecasts in every run.
 - The text tokenizer round-trip test and all model contract tests passed when called directly. The environment lacks `pytest`, so the `pytest` command itself was not available during validation.
+- GPU validation used A800 devices successfully. The small baseline completed CUDA runs for all three modes on synthetic AR data.
+- The local numeric tokenizer package was renamed from `tokenizers/` to `representations/` after a Qwen3TS load exposed a namespace collision with HuggingFace's `tokenizers` package.
+- The local Wave-MoE Qwen3TS-8B checkpoint loads on an A800 and generates text, but its separate time-series encoder weights are not merged automatically by `from_pretrained`; it is not yet a valid pretrained time-series baseline.

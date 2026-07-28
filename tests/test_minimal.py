@@ -2,7 +2,7 @@ import torch
 
 from data.datasets import build_dataset
 from models import ContinuousARModel, DirectForecastModel, TextARModel
-from tokenizers.numeric import FixedWidthTextNumberTokenizer
+from representations.numeric import FixedWidthTextNumberTokenizer
 
 
 def test_text_roundtrip():
