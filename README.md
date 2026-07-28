@@ -27,6 +27,12 @@ python scripts/run_experiment.py --dataset ettm1 --mode continuous_ar --ett-root
 
 Results are written to `results/<dataset>/<mode>/`.
 
+Saved Qwen artifacts can be summarized with rollout and spectral diagnostics:
+
+```bash
+python scripts/summarize_qwen_results.py results/sweep5/synthetic_sine/qwen3_8b_lora
+```
+
 ## Qwen3-8B smoke
 
 The language-pretraining factor is optional and uses the existing local
