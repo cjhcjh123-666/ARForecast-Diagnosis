@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -34,8 +35,15 @@ def main() -> None:
     parser.add_argument("--max-train-windows", type=int, default=128)
     parser.add_argument("--max-val-windows", type=int, default=32)
     parser.add_argument("--max-test-windows", type=int, default=32)
+    parser.add_argument("--max-new-tokens", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--random-init", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=Path("results/qwen_phase1/synthetic_ar"))
     args = parser.parse_args()
+
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
     train_set, val_set, test_set, stats = build_dataset(
         args.dataset,
@@ -49,7 +57,9 @@ def main() -> None:
     train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size=args.batch_size, shuffle=False)
 
-    forecaster = QwenTextARForecaster(args.model_path, device=args.device)
+    forecaster = QwenTextARForecaster(
+        args.model_path, device=args.device, random_init=args.random_init
+    )
     trainable = [parameter for parameter in forecaster.model.parameters() if parameter.requires_grad]
     optimizer = torch.optim.AdamW(trainable, lr=args.learning_rate)
     history = []
@@ -66,7 +76,7 @@ def main() -> None:
     generation_texts = []
     for context, future in test_loader:
         batch_predictions, batch_texts = forecaster.generate_forecast_batch(
-            context, args.horizon, max_new_tokens=args.horizon * 8
+            context, args.horizon, max_new_tokens=args.max_new_tokens or args.horizon * 8
         )
         predictions.extend(batch_predictions)
         targets.append(future.numpy())
@@ -84,10 +94,15 @@ def main() -> None:
     payload = {
         "dataset": args.dataset,
         "model_path": args.model_path,
+        "initialization": "random" if args.random_init else "pretrained",
         "context_len": args.context_len,
         "horizon": args.horizon,
+        "seed": args.seed,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
+        "max_train_windows": args.max_train_windows,
+        "max_test_windows": args.max_test_windows,
+        "max_new_tokens": args.max_new_tokens or args.horizon * 8,
         "normalization": {"mean": stats.mean, "std": stats.std},
         "total_parameters": forecaster.total_parameter_count(),
         "trainable_parameters": forecaster.trainable_parameter_count(),

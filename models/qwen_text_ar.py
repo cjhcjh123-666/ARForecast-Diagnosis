@@ -20,13 +20,14 @@ class QwenTextARForecaster:
         self,
         model_path: str,
         device: str = "cuda:0",
+        random_init: bool = False,
         use_lora: bool = True,
         lora_rank: int = 8,
         lora_alpha: int = 16,
         lora_dropout: float = 0.05,
     ) -> None:
         try:
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+            from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
         except ImportError as exc:
             raise RuntimeError(
                 "Qwen experiments require transformers; use the wavellm environment"
@@ -36,14 +37,21 @@ class QwenTextARForecaster:
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
         if self.tokenizer.pad_token_id is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            trust_remote_code=True,
-            torch_dtype=torch.bfloat16,
-            device_map={"": self.device.index or 0} if self.device.type == "cuda" else None,
-            attn_implementation="sdpa",
-        )
-        self._uses_device_map = self.device.type == "cuda"
+        model_kwargs = {
+            "trust_remote_code": True,
+            "torch_dtype": torch.bfloat16,
+            "attn_implementation": "sdpa",
+        }
+        if random_init:
+            config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+            self.model = AutoModelForCausalLM.from_config(config, **model_kwargs)
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                device_map={"": self.device.index or 0} if self.device.type == "cuda" else None,
+                **model_kwargs,
+            )
+        self._uses_device_map = self.device.type == "cuda" and not random_init
         if self.device.type != "cuda":
             self.model.to(self.device)
 

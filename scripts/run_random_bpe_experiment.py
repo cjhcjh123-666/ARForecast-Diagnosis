@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
@@ -33,8 +34,14 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=1e-3)
     parser.add_argument("--max-train-windows", type=int, default=64)
     parser.add_argument("--max-test-windows", type=int, default=32)
+    parser.add_argument("--max-new-tokens", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--output-dir", type=Path, default=Path("results/formal_match/random_bpe"))
     args = parser.parse_args()
+
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
     train_set, _, test_set, stats = build_dataset(
         args.dataset,
@@ -66,7 +73,9 @@ def main() -> None:
 
     predictions, targets, texts = [], [], []
     for context, future in test_loader:
-        batch_predictions, batch_texts = model.generate_forecast_batch(context, args.horizon)
+        batch_predictions, batch_texts = model.generate_forecast_batch(
+            context, args.horizon, max_new_tokens=args.max_new_tokens or args.horizon * 8
+        )
         predictions.extend(batch_predictions)
         targets.append(future.numpy())
         texts.extend(batch_texts)
@@ -83,8 +92,12 @@ def main() -> None:
         "tokenizer_path": args.tokenizer_path,
         "context_len": args.context_len,
         "horizon": args.horizon,
+        "seed": args.seed,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
+        "max_train_windows": args.max_train_windows,
+        "max_test_windows": args.max_test_windows,
+        "max_new_tokens": args.max_new_tokens or args.horizon * 8,
         "normalization": {"mean": stats.mean, "std": stats.std},
         "trainable_parameters": model.trainable_parameter_count(),
         "history": history,

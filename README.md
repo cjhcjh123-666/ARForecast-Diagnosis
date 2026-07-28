@@ -49,6 +49,23 @@ parse coverage separately:
   --device cuda:0 --epochs 1 --max-train-windows 128
 ```
 
+For the controlled language-pretraining ablation, use the same tokenizer,
+windows, seed, and LoRA protocol while changing only the initialization:
+
+```bash
+/public/duyinglong/miniconda3/envs/wavellm/bin/python scripts/run_qwen_experiment.py \
+  --device cuda:0 --epochs 5 --max-train-windows 64 --max-test-windows 32 \
+  --seed 7 --output-dir results/sweep5/synthetic_ar/qwen3_8b_lora
+
+/public/duyinglong/miniconda3/envs/wavellm/bin/python scripts/run_qwen_experiment.py \
+  --device cuda:0 --epochs 5 --max-train-windows 64 --max-test-windows 32 \
+  --seed 7 --random-init --output-dir results/sweep5/synthetic_ar/qwen3_8b_random_lora
+```
+
+The `--random-init` run instantiates the same Qwen3-8B architecture from its
+local config, then applies the same LoRA adapters. It is the relevant control
+for separating language pretraining from tokenizer and capacity effects.
+
 ## Design
 
 See `docs/implementation.md` for tensor contracts and controlled variables. `analysis/` contains rollout, spectral, and instability diagnostics.
