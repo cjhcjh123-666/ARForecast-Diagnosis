@@ -34,3 +34,21 @@ python scripts/summarize_seed_sweep.py \
   results/robustness/synthetic_sine/seed17/qwen3_8b_lora \
   results/robustness/synthetic_sine/seed17/qwen3_8b_random_lora
 ```
+
+## ETTm1
+
+The same protocol was repeated on the `OT` channel of ETTm1, using the
+standard train-only normalization and the supplied UniTS data path.
+
+| Seed | Initialization | Parse rate | RMSE | RMSE step 1 -> 16 | Spectral amplitude MAE |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 7 | pretrained | 1.000 | 0.11541 | 0.04132 -> 0.16780 | 0.22939 |
+| 7 | random | 1.000 | 0.35612 | 0.34404 -> 0.36201 | 0.58180 |
+| 17 | pretrained | 1.000 | 0.10620 | 0.03616 -> 0.15230 | 0.24574 |
+| 17 | random | 0.984 | 0.34800 | 0.35197 -> 0.32862 | 0.60872 |
+
+Across the two seeds, pretrained Qwen has mean RMSE `0.11080 +/- 0.00652`,
+versus `0.35206 +/- 0.00574` for random initialization, a `68.5%` relative
+reduction. Mean spectral amplitude MAE is `0.23757` versus `0.59526`. The
+random seed 17 result contains 63 valid forecasts out of 64; its parse failure
+is reported separately and does not account for the large numeric error gap.
