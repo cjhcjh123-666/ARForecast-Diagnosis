@@ -43,6 +43,14 @@ diagnostic:
   --max-test-windows 8 --epsilon 0.01
 ```
 
+The larger two-seed synthetic-sine robustness sweep is documented in
+`docs/robustness_sweep.md` and can be aggregated with:
+
+```bash
+python scripts/summarize_seed_sweep.py results/robustness/synthetic_sine/seed7/* \
+  results/robustness/synthetic_sine/seed17/*
+```
+
 ## Qwen3-8B smoke
 
 The language-pretraining factor is optional and uses the existing local
