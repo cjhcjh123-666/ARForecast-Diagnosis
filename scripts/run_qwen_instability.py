@@ -37,6 +37,7 @@ def main() -> None:
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--context-len", type=int, default=64)
     parser.add_argument("--horizon", type=int, default=16)
+    parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--max-test-windows", type=int, default=8)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--epsilon", type=float, default=0.01)
@@ -50,7 +51,7 @@ def main() -> None:
         args.dataset,
         context_len=args.context_len,
         horizon=args.horizon,
-        seed=7,
+        seed=args.seed,
         max_train_windows=1,
         max_val_windows=1,
         max_test_windows=args.max_test_windows,
@@ -91,6 +92,7 @@ def main() -> None:
     payload = {
         "dataset": args.dataset,
         "adapter_path": args.adapter_path,
+        "seed": args.seed,
         "epsilon": args.epsilon,
         "horizon": args.horizon,
         "requested_windows": len(target_array),

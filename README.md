@@ -43,6 +43,9 @@ diagnostic:
   --max-test-windows 8 --epsilon 0.01
 ```
 
+Use `--seed` to select the same test-window subset as a seeded training run.
+The current multi-window findings are documented in `docs/instability_results.md`.
+
 The larger two-seed synthetic-sine robustness sweep is documented in
 `docs/robustness_sweep.md` and can be aggregated with:
 
