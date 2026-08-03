@@ -38,6 +38,7 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=None)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--random-init", action="store_true")
+    parser.add_argument("--history-noise-std", type=float, default=0.0)
     parser.add_argument("--output-dir", type=Path, default=Path("results/qwen_phase1/synthetic_ar"))
     args = parser.parse_args()
 
@@ -66,7 +67,14 @@ def main() -> None:
     for epoch in range(1, args.epochs + 1):
         losses = []
         for context, future in train_loader:
-            losses.append(forecaster.train_step(context, future, optimizer))
+            losses.append(
+                forecaster.train_step(
+                    context,
+                    future,
+                    optimizer,
+                    history_noise_std=args.history_noise_std,
+                )
+            )
         row = {"epoch": epoch, "train_loss": float(np.mean(losses))}
         history.append(row)
         print(f"epoch={epoch:03d} train_loss={row['train_loss']:.6f}")
@@ -95,6 +103,7 @@ def main() -> None:
         "dataset": args.dataset,
         "model_path": args.model_path,
         "initialization": "random" if args.random_init else "pretrained",
+        "history_noise_std": args.history_noise_std,
         "context_len": args.context_len,
         "horizon": args.horizon,
         "seed": args.seed,

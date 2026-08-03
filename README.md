@@ -54,6 +54,10 @@ python scripts/summarize_seed_sweep.py results/robustness/synthetic_sine/seed7/*
   results/robustness/synthetic_sine/seed17/*
 ```
 
+The exploratory history-noise mitigation is controlled by
+`--history-noise-std` in `scripts/run_qwen_experiment.py`; its preliminary
+results are in `docs/mitigation_results.md`.
+
 ## Qwen3-8B smoke
 
 The language-pretraining factor is optional and uses the existing local

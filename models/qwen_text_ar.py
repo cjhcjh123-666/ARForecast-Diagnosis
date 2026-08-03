@@ -116,8 +116,13 @@ class QwenTextARForecaster:
         context: torch.Tensor,
         future: torch.Tensor,
         optimizer: torch.optim.Optimizer,
+        history_noise_std: float = 0.0,
     ) -> float:
+        if history_noise_std < 0:
+            raise ValueError("history_noise_std must be non-negative")
         self.model.train()
+        if history_noise_std > 0:
+            context = context + torch.randn_like(context) * history_noise_std
         batch = self.encode_batch(context, future)
         output = self.model(**batch)
         optimizer.zero_grad(set_to_none=True)
