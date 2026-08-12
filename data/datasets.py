@@ -92,6 +92,34 @@ def load_ettm1(root: str | Path, target: str = "OT") -> SeriesSplits:
     return _standardize_splits(values[:train_end], values[train_end:val_end], values[val_end:])
 
 
+def load_ett(root: str | Path, name: str, target: str = "OT") -> SeriesSplits:
+    """Load ETTh1/ETTh2/ETTm1/ETTm2 with the standard 12/4/4 month split."""
+
+    root = Path(root)
+    wanted = f"{name}.csv".lower()
+    candidates = [
+        path
+        for directory in (root, root / "ETT-small")
+        if directory.is_dir()
+        for path in directory.iterdir()
+        if path.is_file() and path.name.lower() == wanted
+    ]
+    if not candidates:
+        raise FileNotFoundError(f"{name}.csv not found under {root}")
+    csv_path = candidates[0]
+    frame = pd.read_csv(csv_path)
+    if target not in frame.columns:
+        raise ValueError(f"target {target!r} not found in columns: {list(frame.columns)}")
+    values = frame[target].to_numpy(dtype=np.float32)
+    is_minute = name.endswith("m1") or name.endswith("m2")
+    per_month = 30 * 24 * (4 if is_minute else 1)
+    train_end = 12 * per_month
+    val_end = train_end + 4 * per_month
+    if len(values) <= val_end:
+        raise ValueError(f"{name} is too short for the standard split: {len(values)} rows")
+    return _standardize_splits(values[:train_end], values[train_end:val_end], values[val_end:])
+
+
 class WindowDataset(Dataset):
     """Contiguous forecasting windows with optional deterministic subsampling."""
 
@@ -157,6 +185,8 @@ def build_dataset(
         splits = _standardize_splits(raw[: split_points[0]], raw[split_points[0] : split_points[1]], raw[split_points[1] :])
     elif name == "ettm1":
         splits = load_ettm1(ett_root, target=target)
+    elif name in {"etth1", "etth2"}:
+        splits = load_ett(ett_root, name, target=target)
     else:
         raise ValueError(f"unknown dataset: {name}")
 

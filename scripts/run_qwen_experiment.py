@@ -50,7 +50,7 @@ def main() -> None:
         args.dataset,
         context_len=args.context_len,
         horizon=args.horizon,
-        seed=7,
+        seed=args.seed,
         max_train_windows=args.max_train_windows,
         max_val_windows=args.max_val_windows,
         max_test_windows=args.max_test_windows,
