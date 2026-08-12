@@ -9,6 +9,19 @@
 *Recognize, Don't Generate: Language Pretraining as a Temporal-Structure Prior
 in LLM Time-Series Forecasting*
 
+## Format (2026-08-12)
+
+- Switched to the official ICASSP **spconf** template (`\documentclass{article}` +
+  `spconf.sty`), not IEEEtran journal.
+- Two-column, target ~4 pages + optional 5th page for references only.
+- Main figure (spanning both columns, ~half page) is a PLACEHOLDER box in
+  `main.tex` (`fig:main`) — the user draws it (suggested content: recognition
+  accuracy per method/kind + zero-shot router MSE).
+- Compressed to 2 tables (E1 forecast, E4 zero-shot router); E2/E3/E5/E6 are
+  inline text; references are manual `thebibliography` (no bibtex needed).
+- `spconf.sty` + `IEEEbib.bst` must come from the official IEEE ICASSP
+  template (not on this machine; user has them locally).
+
 ## Core thesis
 
 In LLM-based time-series forecasting, language pretraining helps primarily

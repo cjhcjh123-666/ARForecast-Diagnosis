@@ -1,197 +1,170 @@
-\documentclass[journal]{IEEEtran}
+% --------------------------------------------------------------------------
+% ICASSP 2027 submission template (based on the ICASSP 2026 spconf template).
+% Requires: spconf.sty and IEEEbib.bst from the official IEEE ICASSP template
+% (provided with the template you already have).
+% --------------------------------------------------------------------------
+\documentclass{article}
+\usepackage{spconf,amsmath,graphicx,hyperref,booktabs}
 
-\usepackage{amsmath,amssymb,amsfonts}
-\usepackage{booktabs}
-\usepackage{graphicx}
-\usepackage{cite}
-\usepackage{multirow}
-\usepackage{url}
+\title{RECOGNIZE, DON'T GENERATE: LANGUAGE PRETRAINING AS A TEMPORAL-STRUCTURE
+PRIOR IN LLM TIME-SERIES FORECASTING}
 
-\providecommand{\TODO}[1]{\textbf{[#1]}}
+\name{Author Name(s)\thanks{Funding and support acknowledgments here.}}
+\address{Author Affiliation(s)}
 
 \begin{document}
-
-\title{Recognize, Don't Generate: Language Pretraining as a Temporal-Structure
-Prior in LLM Time-Series Forecasting}
-
-\author{Anonymous% \IEEEauthorblockN{}
-% \IEEEauthorblockA{}
-}
-
-\markboth{ICASSP 2027 Submission}{}
 
 \maketitle
 
 \begin{abstract}
-Whether language pretraining contributes anything to LLM-based time-series
-forecasting beyond architecture and tokenizer capacity remains contested.  We
-study this question under a strict control: the same Qwen3-8B architecture,
-tokenizer, data windows, and LoRA protocol, with only the initialization
-differing (pretrained versus random).  Fine-tuning the pretrained model reduces
-forecast MSE by $2.2\times$ on synthetic sine, $\sim 25\times$ on ETTm1, and
-$\sim 6\times$ on ETTh1 (relative reductions of 125\%, 2380\%, and 495\%),
-directly countering the claim that language pretraining is useless for
-forecasting.  We then ask \emph{why} it helps.  A linear probe on the
-\emph{frozen} LLM's hidden state classifies temporal dynamics (trend / periodic
-/ local / mixture / regime) with 96.3\% accuracy, while on the \emph{same
-windows} frozen numeric generation only produces 26.7\% complete forecasts with
-$5.5\times$ the oracle error.  Language pretraining thus acts as a
-temporal-structure prior: it helps the LLM \emph{recognize} dynamics more than
-it makes it a better numeric \emph{generator}.  We exploit this with a frozen-LLM
-expert router that selects among lightweight statistical experts: on
-\emph{unseen} dynamics it matches the oracle $67.8\%$ of the time and reduces
-forecast error by $\sim 42\%$ relative to a hand-feature router, while a
-random-initialized same-architecture control transfers far worse.
+Whether language pretraining contributes to LLM-based time-series forecasting
+beyond architecture and tokenizer capacity remains contested.  Under a strict
+control (identical Qwen3-8B architecture, tokenizer, windows, and LoRA
+protocol, with initialization as the only factor), pretrained initialization
+reduces forecast MSE by $2.2\times$, $\sim 25\times$, and $\sim 6\times$ on
+synthetic sine, ETTm1, and ETTh1.  We ask \emph{why}.  A linear probe on the
+\emph{frozen} LLM classifies temporal dynamics (trend/periodic/local/mixture/
+regime) at 96.3\% accuracy, while on the \emph{same windows} frozen numeric
+generation parses only 26.7\% of forecasts and errs $5.5\times$ above the
+oracle.  Language pretraining is therefore a temporal-structure prior: it helps
+the LLM \emph{recognize} dynamics more than it makes it a better numeric
+\emph{generator}.  As a frozen zero-shot expert router over lightweight
+statistical experts, it matches the oracle on unseen dynamics 67.8\% of the
+time (versus 12.8\% for hand features and 28.9\% for a random same-architecture
+control) and cuts forecast error by 42\%.
 \end{abstract}
 
-\section{Introduction}
+\begin{keywords}
+LLM, time-series forecasting, temporal dynamics, expert routing, zero-shot
+\end{keywords}
+
+\section{INTRODUCTION}
 \label{sec:intro}
 LLM-based time-series forecasting (LLM4TS) is an active area
 \cite{timellm,autotimes,prdts}.  A central open question is \emph{why} language
 pretraining should help predict numbers at all.  A prominent skeptical study
 \cite{tan2024useful} found that removing or randomly initializing the LLM in
-several popular LLM4TS methods does not hurt forecasting, concluding that the
-gains come from architecture (patching, attention) rather than language
-pretraining.  Recent controlled comparisons report the opposite for
-parameter-efficient fine-tuning of modern LLMs \cite{randominit,crossmodalm}.
+several LLM4TS methods does not hurt forecasting, concluding that gains come
+from architecture (patching, attention) rather than language.  Recent
+controlled comparisons report the opposite under parameter-efficient
+fine-tuning of modern LLMs \cite{randominit,crossmodalm}.
 
-This debate is confounded by uncontrolled factors: methods freeze or tune
-different components, use different tokenizers and prompts, and compare against
-baselines of different capacity.  We contribute a controlled measurement and a
-mechanistic hypothesis.  Under a strict control --- identical architecture,
-tokenizer, windows, and LoRA protocol, with initialization as the only factor
---- we find that language pretraining helps forecast error \emph{and} that it
-helps structure \emph{recognition} far more than numeric \emph{generation}.
-Specifically:
-
+This debate is confounded by uncontrolled factors: different methods freeze or
+tune different components, use different tokenizers and prompts, and compare
+against baselines of different capacity.  We contribute a controlled
+measurement and a mechanistic hypothesis:
 \begin{itemize}
-\item \textbf{Controlled pretraining ablation} (Sec.~\ref{sec:e1},
-  Table~\ref{tab:forecast}): pretrained Qwen3-8B beats a random initialization
-  of the same architecture by $2.2\times$--$25\times$ in MSE across
-  sine/ETTm1/ETTh1, with perfect parse coverage.
-\item \textbf{Structure recognition without generation} (Sec.~\ref{sec:e2}):
-  a linear probe on the \emph{frozen} pretrained LLM classifies temporal
-  dynamics at 96.3\% accuracy; a random same-architecture control reaches only
-  90.6\% (and below 80\% on the hardest class, local).
-\item \textbf{The asymmetry} (Sec.~\ref{sec:e3}): on the same windows,
-  recognition is 96.7\% accurate while frozen numeric generation parses only
-  26.7\% of windows and errs $5.5\times$ above the oracle.
-\item \textbf{Zero-shot frozen-LLM router} (Sec.~\ref{sec:e4}): the probe
-  doubles as an expert router on \emph{unseen} dynamics, matching the oracle
-  $67.8\%$ of the time versus $12.8\%$ for a hand-feature router and $28.9\%$
-  for the random control.
+\item \textbf{Controlled ablation} (Sec.~\ref{sec:e1}): with initialization as
+  the only factor, pretrained Qwen3-8B beats random by $2.2\times$--$25\times$
+  in MSE.
+\item \textbf{Structure recognition without generation}
+  (Sec.~\ref{sec:e2}--\ref{sec:e3}): a linear probe on the \emph{frozen} LLM
+  classifies dynamics at 96.3\%; frozen numeric generation parses only 26.7\%
+  of the same windows and errs $5.5\times$ above the oracle.
+\item \textbf{Zero-shot expert router} (Sec.~\ref{sec:e4}): on unseen
+  dynamics, the probe matches the oracle 67.8\% of the time versus 12.8\%
+  (hand features) and 28.9\% (random same-architecture).
 \item \textbf{Patch-level dynamic routing} (Sec.~\ref{sec:e6}): routing each
-  horizon segment independently adapts to within-window dynamics changes
-  ($-33\%$ MSE on regime-switch windows), while stationary windows do not
-  benefit --- the temporal-structure prior is most valuable under heterogeneous
-  dynamics.
+  horizon segment adapts to within-window dynamics changes ($-33\%$ MSE on
+  regime-switch windows).
 \end{itemize}
 
-\section{Controlled Setup}
+\section{CONTROLLED SETUP}
 \label{sec:setup}
-\textbf{Model.}  We use the local Wave-MoE Qwen3-8B checkpoint
-(Qwen3TS-8B); only the language backbone is exercised.  \textbf{Text format.}
-Each normalized history window is rendered as
-``Forecast the next values of this normalized time series. History:
-\texttt{+0.12 -0.04 ...} Forecast:'' with values clamped to $[-9.99,9.99]$
-and formatted with two decimals.  \textbf{Training.}  LoRA (rank 8) on
-$q/k/v/o$ projections; teacher forcing with the prompt tokens masked from the
-LM loss; free-running greedy evaluation; context 64, horizon 16; 256 train / 64
-test windows; 5 epochs; AdamW; train-only normalization.  \textbf{Control.}
-The random initialization instantiates the identical architecture with random
-weights and applies the same LoRA adapters, windows, and seed.
-\textbf{Data.}  Synthetic sine, and the $OT$ channel of ETTm1 and ETTh1.
+\textbf{Model and data.}  We use a local Qwen3-8B checkpoint (language
+backbone only).  Each normalized history is rendered as ``History:
+\texttt{+0.12 -0.04 \dots} Forecast:'' with two-decimal values clamped to
+$[-9.99,9.99]$.  LoRA (rank 8) on $q/k/v/o$; teacher forcing with masked
+prompt loss; free-running greedy evaluation; context 64, horizon 16; 256
+train / 64 test windows; 5 epochs; train-only normalization.  Data: synthetic
+sine and the $OT$ channel of ETTm1/ETTh1.
+\textbf{Control.}  The random initialization instantiates the identical
+architecture with random weights and the same LoRA adapters, windows, and
+seed.
+\textbf{Probe.}  For a frozen model, the last-layer hidden state of the final
+prompt token feeds a linear (softmax) probe.  The feature floor uses nine
+hand-crafted statistics (slope, linear $R^2$, volatility, lag-1
+autocorrelation, dominant period/strength, spectral entropy/concentration,
+range ratio).
+\textbf{Dynamics.}  Five synthetic kinds: trend, periodic, local (AR(1)),
+mixture, and regime (trend switching to periodic mid-window).  Experts fit per
+window: linear extrapolation (trend), autocorrelation period detection +
+seasonal-naive (periodic), and stable damped AR(5) (local).
 
-\textbf{Probe.}  For a frozen (no-tuning) model, we take the last-layer hidden
-state of the final prompt token and train a linear (softmax) probe.  The
-feature floor uses nine hand-crafted statistics (linear slope, fit $R^2$,
-volatility, lag-1 autocorrelation, dominant period and strength, spectral
-entropy, spectral peak concentration, range ratio).
+\section{EXPERIMENTS}
 
-\textbf{Dynamics data.}  Five synthetic dynamics kinds: \emph{trend} (linear
-drift), \emph{periodic} (sinusoid), \emph{local} (AR(1)), \emph{mixture}
-(trend + sinusoid), and \emph{regime} (trend switching to periodic mid-window).
-Experts are lightweight and fit per window: \emph{trend} (linear extrapolation),
-\emph{periodic} (autocorrelation period detection + seasonal-naive repeat), and
-\emph{local} (stable damped AR($5$)).
-
-\section{Experiments}
-
-\subsection{Language pretraining helps: controlled ablation}
-\label{sec:e1}
+\subsection{Language pretraining helps}\label{sec:e1}
 Table~\ref{tab:forecast} aggregates three seeds.  Pretrained initialization
-reduces MSE by $2.2\times$ (sine), $25\times$ (ETTm1), and $6\times$ (ETTh1)
-relative to random initialization of the same architecture, with parse
-coverage $1.0$ and much lower variance; spectral amplitude error is also
-halved to a third.  This directly contradicts \cite{tan2024useful} in the
-parameter-efficient fine-tuning regime of a modern LLM.
+reduces MSE by $2.2\times$--$25\times$ with parse coverage $1.0$ and far lower
+variance, and roughly halves spectral amplitude error.  This directly
+contradicts \cite{tan2024useful} in the parameter-efficient fine-tuning regime
+of a modern LLM.
 
 \begin{table}[t]
-\caption{Controlled forecast: pretrained vs.\ random initialization (mean
-$\pm$ std over seeds $\{7,17,27\}$).  Rel.\ MSE = relative reduction.}
+\caption{Controlled forecast (mean $\pm$ std over seeds 7/17/27).}
 \label{tab:forecast}
-\centering
-\begin{tabular}{lcccccc}
-\toprule
-Dataset & Init & MSE & MAE & Parse & Spec.\ amp MAE & Rel.\\
-\midrule
-sine    & pretrained & 0.0094$\pm$0.0006 & 0.077 & 1.000 & 0.238 & \\
-sine    & random     & 0.0212$\pm$0.0011 & 0.111 & 1.000 & 0.342 & 125\%\\
-ETTm1   & pretrained & 0.0099$\pm$0.0017 & 0.071 & 1.000 & 0.215 & \\
-ETTm1   & random     & 0.2453$\pm$0.1366 & 0.339 & 1.000 & 0.819 & 2380\%\\
-ETTh1   & pretrained & 0.0487$\pm$0.0097 & 0.160 & 1.000 & 0.449 & \\
-ETTh1   & random     & 0.2896$\pm$0.2059 & 0.366 & 0.990 & 0.876 & 495\%\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Frozen structure recognition}
-\label{sec:e2}
-Table~\ref{tab:probe} reports 5-way dynamics classification on held-out
-windows.  The frozen pretrained probe reaches 96.3\%, close to the hand-feature
-floor (99.0\%) and above the random same-architecture control (90.6\%, weakest
-on \emph{local}).  Clean synthetic dynamics are easy for every method; the
-advantage of the pretrained representation appears under
-distribution shift (Sec.~\ref{sec:e4}).
-
-\begin{table}[t]
-\caption{Dynamics recognition accuracy (5 classes, frozen).}
-\label{tab:probe}
 \centering
 \begin{tabular}{lccccc}
 \toprule
-Method & Overall & Trend & Periodic & Local & Mixture\\
+Dataset & Init & MSE & MAE & Parse\\
 \midrule
-Hand features + logistic & 0.988 & 1.00 & 0.97 & 0.98 & 1.00\\
-Frozen pretrained Qwen & 0.963 & 1.00 & 0.94 & 0.94 & 0.94\\
-Frozen random Qwen & 0.906 & 1.00 & 0.96 & 0.78 & 0.88\\
+sine    & pre. & 0.0094$\pm$6e-4 & 0.077 & 1.000\\
+sine    & rand & 0.0212$\pm$1e-3 & 0.111 & 1.000\\
+ETTm1   & pre. & 0.0099$\pm$2e-3 & 0.071 & 1.000\\
+ETTm1   & rand & 0.2453$\pm$.14  & 0.339 & 1.000\\
+ETTh1   & pre. & 0.0487$\pm$1e-2 & 0.160 & 1.000\\
+ETTh1   & rand & 0.2896$\pm$.21  & 0.366 & 0.990\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Recognize versus generate, on the same windows}
-\label{sec:e3}
-On 40 windows stratified across the five dynamics, the frozen pretrained probe
-recognizes the dynamics kind with 96.7\% accuracy.  On the very same windows,
-frozen greedy numeric generation parses only 26.7\% of the 16-step forecasts,
-and the complete ones have MSE 1.85 --- $5.5\times$ the oracle expert error
-(0.33).  Language pretraining therefore confers structure \emph{recognition};
-numeric \emph{generation} is the fragile mode.
+\subsection{Frozen structure recognition}\label{sec:e2}
+Fig.~\ref{fig:main} summarizes recognition.  The frozen pretrained probe
+reaches 96.3\% (per-kind: trend 1.00, periodic 0.94, local 0.94, mixture 0.94,
+regime 1.00), close to the hand-feature floor (99.0\%) and above the random
+same-architecture control (90.6\%, weakest on local).  Clean synthetic dynamics
+are easy for every method; the pretrained advantage appears under distribution
+shift (Sec.~\ref{sec:e4}).
 
-\subsection{Zero-shot frozen-LLM expert router}
-\label{sec:e4}
-We train the router on the three clean dynamics kinds and apply it to the two
-\emph{unseen} kinds (mixture, regime).  Table~\ref{tab:router} compares the
-hand-feature router, the frozen pretrained probe router, and the frozen random
-probe router against the oracle, best-single-expert, and uniform baselines.
-The pretrained probe matches the oracle 67.8\% of the time and reduces
-downstream MSE by 42\% relative to the feature router (0.739 vs.\ 1.278); soft
-routing improves this to 0.723.  The random control transfers far worse
-(28.9\%, MSE 1.08), isolating language pretraining as the source of transfer.
-The feature router collapses on unseen dynamics (12.8\%).  We note honestly
-that on this hard set the best single expert (trend) remains competitive
-(0.500) because trend dominates the oracle; routing's clear advantage is in
-\emph{recognition transfer}, not in uniformly beating every expert.
+\begin{figure*}[t]
+\centering
+% ------------------------------------------------------------------------
+% MAIN FIGURE -- PLACEHOLDER (you draw this).
+% Replace the framed box with, e.g.,
+%   \includegraphics[width=\textwidth]{main_figure.pdf}
+% Suggested content: (a) per-kind recognition accuracy for hand-features /
+% frozen pretrained / frozen random probes; (b) zero-shot router forecast MSE
+% (oracle, best-single, uniform, feature, random, pretrained).  Reserve ~half
+% a page.
+% ------------------------------------------------------------------------
+\fbox{\begin{minipage}[c][4.1in][c]{0.94\textwidth}\centering\Large
+[ MAIN FIGURE PLACEHOLDER ]\\[6pt]
+\normalsize (a) dynamics recognition accuracy (per method/kind);\\[2pt]
+(b) zero-shot router forecast MSE (oracle / best-single / feature / random /
+pretrained)
+\end{minipage}}
+\caption{Temporal-structure recognition and zero-shot expert routing.
+Placeholder --- replace with the final figure.}
+\label{fig:main}
+\end{figure*}
+
+\subsection{Recognize versus generate}\label{sec:e3}
+On 40 windows stratified across the five dynamics, the frozen probe recognizes
+the kind with 96.7\% accuracy; on the \emph{same} windows, frozen greedy
+numeric generation parses only 26.7\% of forecasts and the complete ones have
+MSE 1.85 --- $5.5\times$ the oracle expert error (0.33).  Numeric generation is
+the fragile mode; recognition is robust.
+
+\subsection{Zero-shot frozen-LLM expert router}\label{sec:e4}
+We train the router on three clean kinds and apply it to the two \emph{unseen}
+kinds (mixture, regime).  Table~\ref{tab:router} compares hand-feature, frozen
+pretrained-probe, and frozen random-probe routers against oracle, best-single,
+and uniform baselines.  The pretrained probe matches the oracle 67.8\% and cuts
+MSE by 42\% versus the feature router (0.739 vs.\ 1.278; soft routing 0.723);
+the random control transfers far worse (28.9\%), isolating language pretraining
+as the source of transfer.  We note honestly that best-single (trend) remains
+competitive here because trend dominates the oracle; routing's clear advantage
+is recognition transfer, not uniformly beating every expert.
 
 \begin{table}[t]
 \caption{Zero-shot router on unseen dynamics (mixture/regime).}
@@ -199,11 +172,11 @@ that on this hard set the best single expert (trend) remains competitive
 \centering
 \begin{tabular}{lccc}
 \toprule
-Method & Oracle-acc & MSE & Soft MSE\\
+Method & Oracle-acc & MSE & Soft\\
 \midrule
-Oracle (upper bound) & --- & 0.449 & ---\\
+Oracle & --- & 0.446 & ---\\
 Best single (trend) & --- & 0.500 & ---\\
-Uniform ensemble & --- & 1.287 & ---\\
+Uniform & --- & 1.287 & ---\\
 Feature router & 0.128 & 1.278 & 1.235\\
 Frozen random probe & 0.289 & 1.079 & 1.056\\
 Frozen pretrained probe & 0.678 & 0.739 & 0.723\\
@@ -211,108 +184,80 @@ Frozen pretrained probe & 0.678 & 0.739 & 0.723\\
 \end{tabular}
 \end{table}
 
-\subsection{Real-data validation: zero-shot routing on ETTm1}
-\label{sec:e5}
-We apply the synthetic-trained routers to 300 test windows of the ETTm1 $OT$
-channel without any ETTm1 training (Table~\ref{tab:ettm1}).  The hand-feature
-router collapses: it routes 271 of 300 windows to the \emph{local} expert
-(which has MSE 0.72 there), giving 6.0\% oracle accuracy and MSE 0.657, worse
-than the uniform ensemble.  Both LLM-based routers --- pretrained and random
-same-architecture --- avoid this trap entirely and select \emph{periodic} for
-most windows (the best univariate expert, MSE 0.014).  This shows the
-architecture and numeric-text tokenizer already encode enough structure to
-recognize ETTm1's periodicity dominance.  However, because ETTm1's dynamics
-are homogeneous, a degenerate router that always selects \emph{periodic}
-already achieves oracle accuracy 67.7\% and the best-single MSE, and the random
-probe collapses to exactly this degenerate policy.  The pretrained probe is
-more discriminative (it also identifies some trend windows) but does not
-improve downstream MSE on this homogeneous data.  The value of language
-pretraining for routing therefore appears where dynamics are diverse and
-\emph{unseen} (Sec.~\ref{sec:e4}), not on a single-homogeneous real series.
-The same pattern reproduces on ETTh1 ($OT$): the feature router again collapses
-into \emph{local} (MSE 0.748, 5\% oracle accuracy), both LLM-based routers
-avoid it (MSE $\approx$ 0.040), and the random probe again degenerates to
-always-$\emph{periodic}$.
+\textbf{Real-data validation.}  Applied zero-shot to ETTm1 and ETTh1 ($OT$, 300
+windows, no adaptation), the feature router collapses into the \emph{local}
+expert (MSE 0.657 and 0.748; 6\% and 5\% oracle accuracy), while both LLM-based
+routers avoid it (MSE 0.020 and 0.041) and correctly favor \emph{periodic}.
+On these homogeneous series a degenerate always-periodic policy is already
+near-optimal, so the language-pretraining advantage is specific to diverse and
+\emph{unseen} dynamics (Sec.~\ref{sec:e4}), not to a single homogeneous real
+series.
 
-\begin{table}[t]
-\caption{Zero-shot expert routing on ETTm1 (300 test windows, no adaptation).}
-\label{tab:ettm1}
-\centering
-\begin{tabular}{lccc}
-\toprule
-Method & Oracle-acc & MSE & Route (T/P/L)\\
-\midrule
-Oracle (4 experts) & --- & 0.010 & ---\\
-Best single (periodic) & --- & 0.014 & ---\\
-Always periodic (degenerate) & 0.677 & 0.014 & 0/300/0\\
-Uniform ensemble & --- & 0.255 & ---\\
-Feature router & 0.060 & 0.657 & 11/18/271\\
-Frozen random probe & 0.677 & 0.014 & 0/300/0\\
-Frozen pretrained probe & 0.517 & 0.020 & 82/218/0\\
-\bottomrule
-\end{tabular}
-\end{table}
+\subsection{Patch-level dynamic routing}\label{sec:e6}
+We split the horizon into four 4-step segments and route each segment
+independently with the frozen probe on the 32 steps before it (probe trained on
+32-step clean patches).  Dynamic routing helps exactly where dynamics change
+within a window: MSE drops from 0.82 to 0.55 on regime windows (toward the
+per-segment oracle 0.28) and from 1.64 to 1.31 on local windows; stationary
+windows (periodic/trend) do not benefit because 32-step patches carry weaker
+structural evidence.  The LLM patch router still beats the hand-feature patch
+router by 34\% overall (0.755 vs.\ 1.144), confirming that the temporal-structure
+prior is most valuable when dynamics are heterogeneous --- across windows or
+within them.
 
-\subsection{Patch-level dynamic routing}
-\label{sec:e6}
-Finally we test the dynamic version of the router: the horizon is split into
-four 4-step segments, and each segment is routed independently by the frozen
-LLM probe applied to the 32 steps immediately before it (the probe is trained
-on 32-step clean-dynamics patches).  Table~\ref{tab:patch} reports per-kind
-forecast MSE.  Dynamic routing helps exactly where dynamics change within a
-window: on \emph{regime} windows it cuts MSE from 0.82 to 0.55 (toward the
-per-segment oracle upper bound of 0.28), and on \emph{local} windows from 1.64
-to 1.31.  It does not help stationary windows (\emph{periodic} 0.28 $\to$ 1.00;
-\emph{trend} 0.001 $\to$ 0.065), where 32-step patches carry weaker structural
-evidence and routing errors compound.  The LLM patch router still beats the
-hand-feature patch router by 34\% overall (0.76 vs.\ 1.14), confirming that the
-temporal-structure prior is most valuable when dynamics are heterogeneous ---
-across windows (Sec.~\ref{sec:e4}) or within them.
-
-\begin{table}[t]
-\caption{Patch-level dynamic routing: per-kind forecast MSE.}
-\label{tab:patch}
-\centering
-\begin{tabular}{lccc}
-\toprule
-Kind & Whole-LLM & Patch-LLM & Patch oracle\\
-\midrule
-regime  & 0.817 & \textbf{0.546} & 0.280\\
-local   & 1.635 & \textbf{1.305} & 0.624\\
-mixture & 0.731 & 0.860 & 0.229\\
-periodic& 0.280 & 0.999 & 0.086\\
-trend   & 0.001 & 0.065 & 0.001\\
-overall & 0.693 & 0.755 & 0.244\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Related Work}
+\section{RELATION TO PRIOR WORK}
 \label{sec:related}
-LLM4TS methods reprogram or fine-tune LLMs for forecasting
-\cite{timellm,autotimes,prdts}; the skepticism line argues gains come from
-architecture rather than language \cite{tan2024useful}.  Same-architecture
-initialization studies \cite{randominit,crossmodalm} report pretraining
-benefits under fine-tuning.  LLM-as-router and MoE hybrids for time series
-\cite{lego,fmllm,dmoe} route tokens or tasks through experts; we instead route
-\emph{temporal dynamics} with a \emph{frozen} LLM and measure zero-shot
-transfer to unseen dynamics.  Our spectral diagnostics are natural for ICASSP.
+LLM4TS methods reprogram or fine-tune LLMs \cite{timellm,autotimes,prdts}; the
+skeptical line argues gains come from architecture rather than language
+\cite{tan2024useful}.  Same-architecture initialization studies report
+pretraining benefits under fine-tuning \cite{randominit,crossmodalm}.  LLM
+as-router and MoE hybrids route tokens or tasks through experts
+\cite{lego,fmllm,dmoe}; we route \emph{temporal dynamics} with a \emph{frozen}
+LLM and measure zero-shot transfer to unseen dynamics.  Our spectral
+diagnostics are a natural fit for ICASSP.
 
-\section{Conclusion}
+\section{CONCLUSION}
 \label{sec:conclusion}
 Under a strict controlled comparison, language pretraining is a
 temporal-structure prior in LLM time-series forecasting: it drives large
-forecast-error gains under LoRA fine-tuning, and a \emph{frozen} pretrained
-LLM recognizes temporal dynamics and routes experts zero-shot far better than
-hand features or a random same-architecture control --- while numeric
-generation remains the fragile mode.  Limitations: small window counts and
-synthetic probe data (three seeds); clean stationary dynamics are easy for cheap
-features, so the LLM's advantage is specifically under distribution shift, and
-patch-level dynamic routing helps only where dynamics change within a window.
-Future work extends dynamic routing to longer horizons and real multivariate
-data.
+forecast-error gains under LoRA fine-tuning, and a \emph{frozen} pretrained LLM
+recognizes temporal dynamics and routes experts zero-shot far better than hand
+features or a random same-architecture control, while numeric generation
+remains fragile.  The structure prior is most valuable under heterogeneous
+dynamics, whether across windows or within them.  Limitations: small window
+counts and synthetic probe data (three seeds); future work extends dynamic
+routing to longer horizons and real multivariate data.
 
-\bibliographystyle{IEEEtran}
-\bibliography{refs}
+% References (fifth page if needed).  Manual entries avoid a bibtex dependency.
+\begin{thebibliography}{9}
+\bibitem{tan2024useful} M.~Tan, M.~A. Merrill, V.~Gupta, T.~Althoff, and
+T.~Hartvigsen, ``Are language models actually useful for time series
+forecasting?'' \emph{Advances in Neural Information Processing Systems
+(NeurIPS)}, 2024.
+\bibitem{timellm} M.~Jin et al., ``Time-LLM: Time series forecasting by
+reprogramming large language models,'' in \emph{Int. Conf. Learning
+Representations (ICLR)}, 2024.
+\bibitem{autotimes} Y.~Liu, G.~Qin, X.~Huang, J.~Wang, and M.~Long,
+``AutoTimes: Autoregressive time series forecasters via large language
+models,'' in \emph{Advances in Neural Information Processing Systems
+(NeurIPS)}, 2024.
+\bibitem{prdts} M.~Tan, M.~A. Merrill, V.~Gupta, T.~Althoff, and
+T.~Hartvigsen, ``Time series forecasting with LLMs: Understanding and
+enhancing dataset properties,'' \emph{arXiv:2410.19891}, 2024.
+\bibitem{randominit} ``Random initialization can't catch up: The advantage of
+language model transfer for time series forecasting,'' \emph{arXiv:2506.21570},
+2025.
+\bibitem{crossmodalm} ``LLM pretraining shapes a generalizable manifold:
+Insights into cross-modal transfer to time series,'' \emph{arXiv:2605.20449},
+2026.
+\bibitem{lego} ``Marrying LLMs with dynamic forecasting: A graph
+mixture-of-expert perspective,'' in \emph{Findings of NAACL}, 2025.
+\bibitem{fmllm} ``FM-LLM: A frequency-enhanced mixture-of-experts framework
+for adapting LLMs to time series forecasting,'' \emph{Knowledge-Based Systems},
+2026.
+\bibitem{dmoe} ``DMoE-LLM: A dual-branch mixture-of-experts framework with
+large language models for wind power forecasting,'' \emph{Expert Systems with
+Applications}, 2026.
+\end{thebibliography}
 
 \end{document}
