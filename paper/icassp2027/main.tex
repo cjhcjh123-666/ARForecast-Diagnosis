@@ -7,6 +7,8 @@
 \usepackage{multirow}
 \usepackage{url}
 
+\providecommand{\TODO}[1]{\textbf{[#1]}}
+
 \begin{document}
 
 \title{Recognize, Don't Generate: Language Pretraining as a Temporal-Structure
@@ -26,19 +28,19 @@ forecasting beyond architecture and tokenizer capacity remains contested.  We
 study this question under a strict control: the same Qwen3-8B architecture,
 tokenizer, data windows, and LoRA protocol, with only the initialization
 differing (pretrained versus random).  Fine-tuning the pretrained model reduces
-forecast MSE by $2.2\times$ on synthetic sine, $\sim$$25\times$ on ETTm1, and
-$\sim$$6\times$ on ETTh1 (relative reductions of 125\%, 2380\%, and 495\%),
+forecast MSE by $2.2\times$ on synthetic sine, $\sim 25\times$ on ETTm1, and
+$\sim 6\times$ on ETTh1 (relative reductions of 125\%, 2380\%, and 495\%),
 directly countering the claim that language pretraining is useless for
 forecasting.  We then ask \emph{why} it helps.  A linear probe on the
 \emph{frozen} LLM's hidden state classifies temporal dynamics (trend / periodic
-/ local / mixture / regime) with 96.7\% accuracy, while on the \emph{same
-windows} frozen numeric generation only produces 28.8\% complete forecasts with
-$5\times$ the oracle error.  Language pretraining thus acts as a
+/ local / mixture / regime) with 96.3\% accuracy, while on the \emph{same
+windows} frozen numeric generation only produces 26.7\% complete forecasts with
+$5.5\times$ the oracle error.  Language pretraining thus acts as a
 temporal-structure prior: it helps the LLM \emph{recognize} dynamics more than
 it makes it a better numeric \emph{generator}.  We exploit this with a frozen-LLM
 expert router that selects among lightweight statistical experts: on
-\emph{unseen} dynamics it matches the oracle $62.5\%$ of the time and reduces
-forecast error by $\sim$$41\%$ relative to a hand-feature router, while a
+\emph{unseen} dynamics it matches the oracle $67.8\%$ of the time and reduces
+forecast error by $\sim 42\%$ relative to a hand-feature router, while a
 random-initialized same-architecture control transfers far worse.
 \end{abstract}
 
@@ -69,14 +71,14 @@ Specifically:
   sine/ETTm1/ETTh1, with perfect parse coverage.
 \item \textbf{Structure recognition without generation} (Sec.~\ref{sec:e2}):
   a linear probe on the \emph{frozen} pretrained LLM classifies temporal
-  dynamics at 96.7\% accuracy; a random same-architecture control reaches only
-  91.0\% (and 70\% on the hardest class).
+  dynamics at 96.3\% accuracy; a random same-architecture control reaches only
+  90.6\% (and below 80\% on the hardest class, local).
 \item \textbf{The asymmetry} (Sec.~\ref{sec:e3}): on the same windows,
-  recognition is 96\% accurate while frozen numeric generation parses only
-  29\% of windows and errs $5\times$ above the oracle.
+  recognition is 96.7\% accurate while frozen numeric generation parses only
+  26.7\% of windows and errs $5.5\times$ above the oracle.
 \item \textbf{Zero-shot frozen-LLM router} (Sec.~\ref{sec:e4}): the probe
   doubles as an expert router on \emph{unseen} dynamics, matching the oracle
-  $62.5\%$ of the time versus $12.5\%$ for a hand-feature router and $27.9\%$
+  $67.8\%$ of the time versus $12.8\%$ for a hand-feature router and $28.9\%$
   for the random control.
 \end{itemize}
 
@@ -141,10 +143,10 @@ ETTh1   & random     & 0.2896$\pm$0.2059 & 0.366 & 0.990 & 0.876 & 495\%\\
 \subsection{Frozen structure recognition}
 \label{sec:e2}
 Table~\ref{tab:probe} reports 5-way dynamics classification on held-out
-windows.  The frozen pretrained probe reaches 96.7\%, close to the hand-feature
-floor (98.0\%) and above the random same-architecture control (91.0\%, weakest
-on \emph{local} at 70\%).  Clean synthetic dynamics are easy for every
-method; the advantage of the pretrained representation appears under
+windows.  The frozen pretrained probe reaches 96.3\%, close to the hand-feature
+floor (99.0\%) and above the random same-architecture control (90.6\%, weakest
+on \emph{local}).  Clean synthetic dynamics are easy for every method; the
+advantage of the pretrained representation appears under
 distribution shift (Sec.~\ref{sec:e4}).
 
 \begin{table}[t]
@@ -156,8 +158,8 @@ distribution shift (Sec.~\ref{sec:e4}).
 Method & Overall & Trend & Periodic & Local & Mixture\\
 \midrule
 Hand features + logistic & 0.988 & 1.00 & 0.97 & 0.98 & 1.00\\
-Frozen pretrained Qwen & 0.967 & 1.00 & 0.92 & 0.97 & 0.95\\
-Frozen random Qwen & 0.912 & 1.00 & 0.96 & 0.85 & 0.88\\
+Frozen pretrained Qwen & 0.963 & 1.00 & 0.94 & 0.94 & 0.94\\
+Frozen random Qwen & 0.906 & 1.00 & 0.96 & 0.78 & 0.88\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -165,9 +167,9 @@ Frozen random Qwen & 0.912 & 1.00 & 0.96 & 0.85 & 0.88\\
 \subsection{Recognize versus generate, on the same windows}
 \label{sec:e3}
 On 40 windows stratified across the five dynamics, the frozen pretrained probe
-recognizes the dynamics kind with 96.3\% accuracy.  On the very same windows,
-frozen greedy numeric generation parses only 28.8\% of the 16-step forecasts,
-and the complete ones have MSE 1.64 --- $5\times$ the oracle expert error
+recognizes the dynamics kind with 96.7\% accuracy.  On the very same windows,
+frozen greedy numeric generation parses only 26.7\% of the 16-step forecasts,
+and the complete ones have MSE 1.85 --- $5.5\times$ the oracle expert error
 (0.33).  Language pretraining therefore confers structure \emph{recognition};
 numeric \emph{generation} is the fragile mode.
 
@@ -177,13 +179,13 @@ We train the router on the three clean dynamics kinds and apply it to the two
 \emph{unseen} kinds (mixture, regime).  Table~\ref{tab:router} compares the
 hand-feature router, the frozen pretrained probe router, and the frozen random
 probe router against the oracle, best-single-expert, and uniform baselines.
-The pretrained probe matches the oracle 62.5\% of the time and reduces
-downstream MSE by 41\% relative to the feature router (0.801 vs.\ 1.360); soft
-routing improves this to 0.784.  The random control transfers far worse
-(27.9\%, MSE 1.13), isolating language pretraining as the source of transfer.
-The feature router collapses on unseen dynamics (12.5\%).  We note honestly
+The pretrained probe matches the oracle 67.8\% of the time and reduces
+downstream MSE by 42\% relative to the feature router (0.739 vs.\ 1.278); soft
+routing improves this to 0.723.  The random control transfers far worse
+(28.9\%, MSE 1.08), isolating language pretraining as the source of transfer.
+The feature router collapses on unseen dynamics (12.8\%).  We note honestly
 that on this hard set the best single expert (trend) remains competitive
-(0.509) because trend dominates the oracle; routing's clear advantage is in
+(0.500) because trend dominates the oracle; routing's clear advantage is in
 \emph{recognition transfer}, not in uniformly beating every expert.
 
 \begin{table}[t]
@@ -195,11 +197,11 @@ that on this hard set the best single expert (trend) remains competitive
 Method & Oracle-acc & MSE & Soft MSE\\
 \midrule
 Oracle (upper bound) & --- & 0.449 & ---\\
-Best single (trend) & --- & 0.492 & ---\\
-Uniform ensemble & --- & 1.220 & ---\\
-Feature router & 0.125 & 1.360 & 1.301\\
-Frozen random probe & 0.279 & 1.130 & 1.105\\
-Frozen pretrained probe & 0.625 & 0.801 & 0.784\\
+Best single (trend) & --- & 0.500 & ---\\
+Uniform ensemble & --- & 1.287 & ---\\
+Feature router & 0.128 & 1.278 & 1.235\\
+Frozen random probe & 0.289 & 1.079 & 1.056\\
+Frozen pretrained probe & 0.678 & 0.739 & 0.723\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -207,15 +209,44 @@ Frozen pretrained probe & 0.625 & 0.801 & 0.784\\
 \subsection{Real-data validation: zero-shot routing on ETTm1}
 \label{sec:e5}
 We apply the synthetic-trained routers to 300 test windows of the ETTm1 $OT$
-channel without any ETTm1 training.  The frozen pretrained probe routes 51.7\%
-of windows to the oracle expert and reaches MSE 0.020, near the best single
-univariate expert (periodic, 0.014) and the oracle (0.010), while the
-hand-feature router collapses (6.0\% oracle accuracy; MSE 0.657, worse than the
-uniform ensemble at 0.255) by over-committing to the \emph{local} expert.
-Inspecting the routing decisions, the LLM probe almost never selects
-\emph{local} (0/300), correctly recognizing that ETTm1's short-horizon dynamics
-are periodicity-dominated.  This shows the temporal-structure prior transfers
-from synthetic dynamics to real data without adaptation.
+channel without any ETTm1 training (Table~\ref{tab:ettm1}).  The hand-feature
+router collapses: it routes 271 of 300 windows to the \emph{local} expert
+(which has MSE 0.72 there), giving 6.0\% oracle accuracy and MSE 0.657, worse
+than the uniform ensemble.  Both LLM-based routers --- pretrained and random
+same-architecture --- avoid this trap entirely and select \emph{periodic} for
+most windows (the best univariate expert, MSE 0.014).  This shows the
+architecture and numeric-text tokenizer already encode enough structure to
+recognize ETTm1's periodicity dominance.  However, because ETTm1's dynamics
+are homogeneous, a degenerate router that always selects \emph{periodic}
+already achieves oracle accuracy 67.7\% and the best-single MSE, and the random
+probe collapses to exactly this degenerate policy.  The pretrained probe is
+more discriminative (it also identifies some trend windows) but does not
+improve downstream MSE on this homogeneous data.  The value of language
+pretraining for routing therefore appears where dynamics are diverse and
+\emph{unseen} (Sec.~\ref{sec:e4}), not on a single-homogeneous real series.
+The same pattern reproduces on ETTh1 ($OT$): the feature router again collapses
+into \emph{local} (MSE 0.748, 5\% oracle accuracy), both LLM-based routers
+avoid it (MSE $\approx$ 0.040), and the random probe again degenerates to
+always-$\emph{periodic}$.
+
+\begin{table}[t]
+\caption{Zero-shot expert routing on ETTm1 (300 test windows, no adaptation).}
+\label{tab:ettm1}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Method & Oracle-acc & MSE & Route (T/P/L)\\
+\midrule
+Oracle (4 experts) & --- & 0.010 & ---\\
+Best single (periodic) & --- & 0.014 & ---\\
+Always periodic (degenerate) & 0.677 & 0.014 & 0/300/0\\
+Uniform ensemble & --- & 0.255 & ---\\
+Feature router & 0.060 & 0.657 & 11/18/271\\
+Frozen random probe & 0.677 & 0.014 & 0/300/0\\
+Frozen pretrained probe & 0.517 & 0.020 & 82/218/0\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Related Work}
 \label{sec:related}

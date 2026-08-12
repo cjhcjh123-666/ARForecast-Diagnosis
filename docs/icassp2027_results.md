@@ -22,42 +22,54 @@ architecture/tokenizer/windows; only initialization differs.
 
 | Method | Overall | Trend | Periodic | Local | Mixture | Regime |
 |---|---|---|---|---|---|---|
-| Hand features + logistic | 0.980 | 1.00 | 0.97 | 0.95 | 1.00 | 1.00 |
-| Frozen pretrained Qwen3-8B | 0.967 | 1.00 | 0.97 | 0.95 | 0.92 | 1.00 |
-| Frozen random Qwen3-8B | 0.910 | 1.00 | 0.97 | 0.70 | 0.88 | 1.00 |
+| Hand features + logistic | 0.990 | 1.00 | 0.97 | 0.98 | 1.00 | 1.00 |
+| Frozen pretrained Qwen3-8B | 0.963 | 1.00 | 0.94 | 0.94 | 0.94 | 1.00 |
+| Frozen random Qwen3-8B | 0.906 | 1.00 | 0.96 | 0.78 | 0.88 | 1.00 |
+
+(3 seeds: 7/17/27)
 
 ## E3. Paired recognize-vs-generate (same 40 windows, stratified)
 
 | Metric | Value |
 |---|---|
-| Recognition accuracy (frozen probe) | 0.950 |
-| Frozen generation parse rate | 0.275 |
-| Frozen generation MSE (complete) | 1.979 |
-| Oracle expert MSE (same windows) | 0.328 |
+| Recognition accuracy (frozen probe) | 0.967 |
+| Frozen generation parse rate | 0.267 |
+| Frozen generation MSE (complete) | 1.854 |
+| Oracle expert MSE (same windows) | 0.334 |
 
 ## E4. Zero-shot expert router (train on trend/periodic/local → unseen mixture/regime)
 
 | Method | Oracle-acc | Hard MSE | Soft MSE |
 |---|---|---|---|
-| Oracle (upper bound) | — | 0.449 | — |
-| Best single (trend) | — | 0.492 | — |
-| Uniform ensemble | — | 1.220 | — |
-| Feature router | 0.108 | 1.379 | 1.350 |
-| Frozen random probe | 0.267 | 1.198 | 1.179 |
-| Frozen pretrained probe | 0.633 | 0.773 | 0.761 |
+| Oracle (upper bound) | — | 0.446 | — |
+| Best single (trend) | — | 0.500 | — |
+| Uniform ensemble | — | 1.287 | — |
+| Feature router | 0.128 | 1.278 | 1.235 |
+| Frozen random probe | 0.289 | 1.079 | 1.056 |
+| Frozen pretrained probe | 0.678 | 0.739 | 0.723 |
 
 ## E5. Real-data zero-shot: ETTm1 (300 test windows, no adaptation)
 
-| Method | Oracle-acc | MSE |
-|---|---|---|
-| Oracle (4 experts) | — | 0.0103 |
-| Best single univariate (periodic) | — | 0.0137 |
-| Uniform ensemble | — | 0.2552 |
-| Feature router | 0.060 | 0.6568 |
-| Frozen pretrained probe router | 0.517 | 0.0199 |
+| Method | Oracle-acc | MSE | Route (T/P/L) |
+|---|---|---|---|
+| Oracle (4 experts) | — | 0.0103 | — |
+| Best single univariate (periodic) | — | 0.0137 | — |
+| Always periodic (degenerate) | 0.677 | 0.0137 | 0/300/0 |
+| Uniform ensemble | — | 0.2552 | — |
+| Feature router | 0.060 | 0.6568 | 11/18/271 |
+| Frozen random probe | 0.677 | 0.0137 | 0/300/0 |
+| Frozen pretrained probe | 0.517 | 0.0199 | 82/218/0 |
 
-Probe router routing distribution on ETTm1: [trend 82, periodic 218, local 0] —
-the frozen LLM correctly recognizes ETTm1 as periodicity-dominated.
+Honest read: on homogeneous ETTm1, both LLM-based routers avoid the
+catastrophic `local` trap that breaks the feature router (MSE 0.66), but a
+degenerate always-periodic policy is already near-optimal there, so the
+language-pretraining advantage shows on diverse/unseen dynamics (E4), not on a
+single homogeneous real series.
+
+ETTh1 reproduces the same pattern (300 windows): feature router MSE 0.748 /
+5% oracle-acc (collapses to local, 292/300); pretrained probe MSE 0.041 / 54%
+(routes 26 to trend, 274 to periodic); random probe MSE 0.039 / 54%
+(degenerate always-periodic).
 
 ## Key takeaways
 
@@ -73,8 +85,8 @@ the frozen LLM correctly recognizes ETTm1 as periodicity-dominated.
 
 ## Honest limitations (to keep in the paper)
 
-- Synthetic probe data covers two seeds (7, 17); recognition/router numbers are
-  stable across them, but more seeds would be safer before submission.
+- Synthetic probe data covers three seeds (7/17/27); recognition/router numbers
+  are stable across them.
 - Clean stationary dynamics are easy for cheap features (98% floor); the LLM
   advantage is specifically OOD transfer.
 - On unseen synthetic mixture/regime, best-single (trend) is competitive

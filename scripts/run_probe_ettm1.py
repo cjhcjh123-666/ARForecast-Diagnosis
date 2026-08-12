@@ -1,4 +1,4 @@
-"""Zero-shot frozen-LLM expert router applied to real ETTm1 data (GPU).
+"""Zero-shot frozen-LLM expert router applied to real ETT data (GPU).
 
 Trains the routing probe on synthetic dynamics hidden states (cached from the
 probe experiment), extracts frozen-Qwen hidden states for ETTm1 test windows,
@@ -30,12 +30,28 @@ from scripts.run_frozen_probe import _format_values, _load_model, extract_last_h
 KINDS = ["trend", "periodic", "local", "mixture", "regime"]
 
 
-def load_ettm1_all_channels(root: Path) -> tuple[np.ndarray, np.ndarray]:
-    frame = pd.read_csv(root / "ETTm1.csv")
+def _cache(cache_dir: Path, stem: str, seed: int) -> Path:
+    seeded = cache_dir / f"{stem}_seed{seed}.npy"
+    if seeded.is_file():
+        return seeded
+    legacy = cache_dir / f"{stem}.npy"
+    if legacy.is_file():
+        return legacy
+    raise FileNotFoundError(f"missing cache {stem} (seed {seed}) under {cache_dir}")
+
+
+def load_ett_all_channels(root: Path, dataset: str) -> tuple[np.ndarray, np.ndarray]:
+    wanted = f"{dataset}.csv".lower()
+    csv_path = next(
+        (p for p in root.iterdir() if p.is_file() and p.name.lower() == wanted),
+        root / f"{dataset}.csv",
+    )
+    frame = pd.read_csv(csv_path)
     channels = frame[["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]].to_numpy(
         dtype=np.float32
     )
-    per_month = 30 * 24 * 4
+    is_minute = dataset.startswith("ettm")
+    per_month = 30 * 24 * (4 if is_minute else 1)
     train_end = 12 * per_month
     val_end = train_end + 4 * per_month
     train = channels[:train_end]
@@ -51,6 +67,7 @@ def main() -> None:
         "--model-path", default="/public/chenjiahui/Wave-MoE-Skill-Agent/hf_models/Qwen3-8B"
     )
     parser.add_argument("--device", default="cuda:7")
+    parser.add_argument("--dataset", default="ettm1", choices=["ettm1", "etth1", "etth2"])
     parser.add_argument(
         "--ett-root", type=Path,
         default=Path("/public/chenjiahui/波数据时序基座大模型/UniTS-main/dataset/ETT-small"),
@@ -63,7 +80,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("results/icassp/ettm1_router/probe_summary.json"))
     args = parser.parse_args()
 
-    _, test_all = load_ettm1_all_channels(args.ett_root)
+    _, test_all = load_ett_all_channels(args.ett_root, args.dataset)
     ot = 6
     rng = np.random.default_rng(args.seed)
     available = len(test_all) - args.context_len - args.horizon + 1
@@ -82,7 +99,7 @@ def main() -> None:
     oracle = errors.argmin(axis=1)
 
     # synthetic training hidden states (probe router)
-    train_h = np.load(args.probe_cache / "train_h_pretrained.npy")
+    train_h = np.load(_cache(args.probe_cache, "train_h_pretrained", args.seed))
     c, _, kk = build_labeled_windows(KINDS, args.context_len, args.horizon, 150, args.seed)
     tr = np.concatenate([np.arange(k0 * 150, k0 * 150 + 90) for k0 in range(3)])
     clean_label = kk[tr]
@@ -93,6 +110,14 @@ def main() -> None:
     torch.cuda.empty_cache()
 
     _, probe_pred = softmax_predict(et_h, *softmax_regression(train_h[tr], clean_label))
+
+    # random same-architecture probe control
+    model_r, tokenizer_r = _load_model(args.model_path, args.device, True)
+    et_h_r = extract_last_hidden(model_r, tokenizer_r, contexts, args.device, batch_size=32)
+    del model_r
+    torch.cuda.empty_cache()
+    train_h_r = np.load(_cache(args.probe_cache, "train_h_random", 7))
+    _, probe_r_pred = softmax_predict(et_h_r, *softmax_regression(train_h_r[tr], clean_label))
 
     # feature router
     syn_feats = np.stack([temporal_features(x) for x in c[tr]])
@@ -119,6 +144,11 @@ def main() -> None:
             "mse": float(np.mean(errors[np.arange(len(contexts)), probe_pred])),
             "acc_vs_oracle": accuracy(probe_pred, oracle),
             "pred_dist": [int((probe_pred == k).sum()) for k in range(3)],
+        },
+        "probe_random_router": {
+            "mse": float(np.mean(errors[np.arange(len(contexts)), probe_r_pred])),
+            "acc_vs_oracle": accuracy(probe_r_pred, oracle),
+            "pred_dist": [int((probe_r_pred == k).sum()) for k in range(3)],
         },
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
