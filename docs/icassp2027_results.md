@@ -71,6 +71,30 @@ ETTh1 reproduces the same pattern (300 windows): feature router MSE 0.748 /
 (routes 26 to trend, 274 to periodic); random probe MSE 0.039 / 54%
 (degenerate always-periodic).
 
+## E6. Patch-level dynamic routing (bonus, frozen LLM probe)
+
+Horizon split into 4×4-step segments; each segment routed independently by the
+frozen LLM probe on the 32 steps before it (train probe on 32-step clean
+patches).  Per-kind forecast MSE:
+
+| Kind | Whole-LLM | Patch-LLM | Patch oracle |
+|---|---|---|---|
+| regime | 0.817 | **0.546** | 0.280 |
+| local | 1.635 | **1.305** | 0.624 |
+| mixture | 0.731 | 0.860 | 0.229 |
+| periodic | 0.280 | 0.999 | 0.086 |
+| trend | 0.001 | 0.065 | 0.001 |
+| overall | 0.693 | 0.755 | 0.244 |
+
+Overall routing acc vs per-segment oracle: whole-LLM 44.3%, patch-LLM 45.7%,
+feature-patch 44.8%.  Feature patch router overall MSE 1.144.
+
+Honest read: dynamic routing helps where dynamics change within the window
+(regime -33%, local -20%), and the LLM patch router beats the feature patch
+router by ~34% overall, but stationary windows (periodic/trend) do not benefit
+because 32-step patches carry weaker structural evidence and routing errors
+compound.
+
 ## Key takeaways
 
 1. Under strict control (same arch/tokenizer/windows, init only differs),
