@@ -53,6 +53,19 @@ def _load_model(
 ):
     from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
+    try:
+        import transformers.modeling_utils as _mu
+
+        if not isinstance(_mu.ALL_PARALLEL_STYLES, (set, frozenset)):
+            _mu.ALL_PARALLEL_STYLES = frozenset(
+                {
+                    "tp", "block", "sharded", "pp", "sequence", "rowwise",
+                    "colwise", "naive", "serial", "manual", "flex", "ddp",
+                }
+            )
+    except Exception:
+        pass
+
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token

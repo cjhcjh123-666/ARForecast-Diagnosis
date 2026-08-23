@@ -98,7 +98,11 @@ Table~\ref{tab:forecast} aggregates three seeds.  Pretrained initialization
 reduces MSE by $2.2\times$--$25\times$ with parse coverage $1.0$ and far lower
 variance, and roughly halves spectral amplitude error.  This directly
 contradicts \cite{tan2024useful} in the parameter-efficient fine-tuning regime
-of a modern LLM.
+of a modern LLM.  To rule out that LoRA alone handicaps the random backbone, we
+repeat the ETTm1 comparison on Qwen3-0.6B/1.7B with \emph{full} fine-tuning:
+even with full capacity, random initialization stays $10$--$13\times$ worse than
+pretrained (0.6B full: 0.141 vs.\ 0.012; 1.7B full: 0.142 vs.\ 0.015), so the
+benefit is not a LoRA artifact.
 
 \begin{table}[t]
 \caption{Controlled forecast (mean $\pm$ std over seeds 7/17/27).}
@@ -155,6 +159,15 @@ numeric generation parses only 26.7\% of forecasts and the complete ones have
 MSE 1.85 --- $5.5\times$ the oracle expert error (0.33).  Numeric generation is
 the fragile mode; recognition is robust.
 
+To rule out that the generation failure is merely poor output \emph{formatting},
+we repeat recognition and generation on the frozen Qwen3-0.6B with
+\emph{grammar-constrained decoding}: at every step the logits are masked to the
+exact expected character class of the ``$+d.dd$'' format, forcing 100\% parse
+coverage.  On 120 windows, recognition reaches 98.3\%, while the
+formatting-perfect generation still errs MSE 2.47 --- $6.2\times$ the oracle
+expert error (0.40).  The recognize-versus-generate gap therefore persists even
+after removing the formatting confound.
+
 \subsection{Zero-shot frozen-LLM expert router}\label{sec:e4}
 We train the router on three clean kinds and apply it to the two \emph{unseen}
 kinds (mixture, regime).  Table~\ref{tab:router} compares hand-feature, frozen
@@ -164,7 +177,11 @@ MSE by 42\% versus the feature router (0.739 vs.\ 1.278; soft routing 0.723);
 the random control transfers far worse (28.9\%), isolating language pretraining
 as the source of transfer.  We note honestly that best-single (trend) remains
 competitive here because trend dominates the oracle; routing's clear advantage
-is recognition transfer, not uniformly beating every expert.
+is recognition transfer, not uniformly beating every expert.  As a non-LLM
+learned control, a small MLP trained on the same three clean classes (raw
+windows) transfers OOD at only 37.5\% oracle accuracy (MSE 0.80), far below the
+frozen pretrained probe (67.8\%), so the transfer is not explained by any
+supervised nonlinear classifier on the same data.
 
 \begin{table}[t]
 \caption{Zero-shot router on unseen dynamics (mixture/regime).}
@@ -178,20 +195,27 @@ Oracle & --- & 0.446 & ---\\
 Best single (trend) & --- & 0.500 & ---\\
 Uniform & --- & 1.287 & ---\\
 Feature router & 0.128 & 1.278 & 1.235\\
+Learned MLP (raw) & 0.375 & 0.802 & ---\\
+Learned MLP (features) & 0.281 & 1.088 & ---\\
 Frozen random probe & 0.289 & 1.079 & 1.056\\
 Frozen pretrained probe & 0.678 & 0.739 & 0.723\\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Real-data validation.}  Applied zero-shot to ETTm1 and ETTh1 ($OT$, 300
-windows, no adaptation), the feature router collapses into the \emph{local}
-expert (MSE 0.657 and 0.748; 6\% and 5\% oracle accuracy), while both LLM-based
-routers avoid it (MSE 0.020 and 0.041) and correctly favor \emph{periodic}.
-On these homogeneous series a degenerate always-periodic policy is already
-near-optimal, so the language-pretraining advantage is specific to diverse and
-\emph{unseen} dynamics (Sec.~\ref{sec:e4}), not to a single homogeneous real
-series.
+\textbf{Real-data validation.}  We apply the synthetic-trained routers to five
+real datasets (ETTm1, ETTh1, electricity, weather, exchange\_rate; 300 windows
+each, no adaptation).  The hand-feature router collapses into the \emph{local}
+expert on three of five (ETTm1 MSE 0.657, ETTh1 0.748, exchange\_rate 1.591),
+while the frozen pretrained probe avoids \emph{local} everywhere and reaches
+MSE 0.020--0.374, beating the feature router on four of five datasets and
+nearly matching the best single expert on four.  The random same-architecture
+probe often degenerates to always-$\emph{periodic}$, which is near-optimal on
+homogeneous series (ETTm1, ETTh1, weather, exchange\_rate); on electricity,
+where \emph{local} is genuinely best, the LLM's local-avoidance costs a little
+(0.374 vs.\ best-single 0.343).  The language-pretraining advantage is clearest
+on diverse and \emph{unseen} dynamics (Sec.~\ref{sec:e4}); on a single
+homogeneous real series a degenerate policy suffices.
 
 \subsection{Patch-level dynamic routing}\label{sec:e6}
 We split the horizon into four 4-step segments and route each segment

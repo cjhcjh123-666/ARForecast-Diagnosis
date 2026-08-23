@@ -125,7 +125,7 @@ def constrained_generate(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--model-path", default="/public/chenjiahui/Wave-MoE-Skill-Agent/hf_models/Qwen3-8B"
+        "--model-path", default="/9950backfile/chenjiahui/hf_cache/Qwen3-0.6B"
     )
     parser.add_argument("--device", default="cuda:6")
     parser.add_argument("--context-len", type=int, default=64)
@@ -142,15 +142,13 @@ def main() -> None:
     n_total = len(contexts)
     n_per_kind = args.n_per_kind
 
-    # probe trained on cached seed-7 pretrained hidden states (5 kinds)
-    train_h = np.load(args.probe_cache / "train_h_pretrained_seed7.npy")
-    c, _, kk = build_labeled_windows(KINDS, args.context_len, args.horizon, 150, 7)
-    n_train = 90
-    tr = np.concatenate([np.arange(k * n_train, (k + 1) * n_train) for k in range(5)])
-    train_labels = np.repeat(np.arange(5), n_train)
-    probe_w = softmax_regression(train_h[tr], train_labels, n_iter=800)
-
     model, tokenizer = _load_model(args.model_path, args.device, False)
+    # probe trained on-the-fly from this model's hidden states (5 kinds)
+    train_windows, _, train_kind = build_labeled_windows(
+        KINDS, args.context_len, args.horizon, 90, args.seed
+    )
+    train_h = extract_last_hidden(model, tokenizer, train_windows, args.device)
+    probe_w = softmax_regression(train_h, train_kind, n_iter=800)
     test_h = extract_last_hidden(model, tokenizer, contexts, args.device)
     _, probe_pred = softmax_predict(test_h, *probe_w)
     recog_acc = float(np.mean(probe_pred == kind_ids))
