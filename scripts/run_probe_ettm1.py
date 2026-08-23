@@ -40,25 +40,53 @@ def _cache(cache_dir: Path, stem: str, seed: int) -> Path:
     raise FileNotFoundError(f"missing cache {stem} (seed {seed}) under {cache_dir}")
 
 
-def load_ett_all_channels(root: Path, dataset: str) -> tuple[np.ndarray, np.ndarray]:
-    wanted = f"{dataset}.csv".lower()
+DATASET_CONFIG = {
+    "ettm1": {"file": "ETTm1.csv", "target": "OT", "per_month": 30 * 24 * 4, "split": (12, 4, 4)},
+    "etth1": {"file": "ETTh1.csv", "target": "OT", "per_month": 30 * 24, "split": (12, 4, 4)},
+    "etth2": {"file": "ETTh2.csv", "target": "OT", "per_month": 30 * 24, "split": (12, 4, 4)},
+    "electricity": {"file": "electricity.csv", "target": "0", "per_month": 30 * 24, "split": None},
+    "exchange_rate": {"file": "exchange_rate.csv", "target": "OT", "per_month": 30, "split": None},
+    "weather": {"file": "weather.csv", "target": "T (degC)", "per_month": 30 * 24 * 6, "split": None},
+    "traffic": {"file": "traffic.csv", "target": "0", "per_month": 30 * 24, "split": None},
+}
+
+
+def load_all_channels(root: Path, dataset: str) -> tuple[np.ndarray, np.ndarray, str]:
+    """Return (train_all, test_all, target_name), train-normalized."""
+    cfg = DATASET_CONFIG[dataset]
+    wanted = cfg["file"].lower()
+    candidates = [root, root / dataset, root / "ETT-small"]
     csv_path = next(
-        (p for p in root.iterdir() if p.is_file() and p.name.lower() == wanted),
-        root / f"{dataset}.csv",
+        (
+            p
+            for directory in candidates
+            if directory.is_dir()
+            for p in directory.iterdir()
+            if p.is_file() and p.name.lower() == wanted
+        ),
+        None,
     )
+    if csv_path is None:
+        raise FileNotFoundError(f"{cfg['file']} not found under {root}")
     frame = pd.read_csv(csv_path)
-    channels = frame[["HUFL", "HULL", "MUFL", "MULL", "LUFL", "LULL", "OT"]].to_numpy(
-        dtype=np.float32
-    )
-    is_minute = dataset.startswith("ettm")
-    per_month = 30 * 24 * (4 if is_minute else 1)
-    train_end = 12 * per_month
-    val_end = train_end + 4 * per_month
-    train = channels[:train_end]
-    test = channels[val_end:]
+    target = cfg["target"]
+    if target not in frame.columns:
+        raise ValueError(f"target {target!r} not found in {list(frame.columns)[:8]}...")
+    channels = frame.drop(columns=["date"]).to_numpy(dtype=np.float32)
+    split = cfg["split"]
+    if split is not None:
+        months, val, _ = split
+        train_end = months * cfg["per_month"]
+        test_start = (months + val) * cfg["per_month"]
+        train = channels[:train_end]
+        test = channels[test_start:]
+    else:
+        cut = int(0.7 * len(channels))
+        train = channels[:cut]
+        test = channels[cut:]
     mean = train.mean(axis=0, keepdims=True)
     std = train.std(axis=0, keepdims=True) + 1e-6
-    return (train - mean) / std, (test - mean) / std
+    return (train - mean) / std, (test - mean) / std, target
 
 
 def main() -> None:
@@ -67,7 +95,11 @@ def main() -> None:
         "--model-path", default="/public/chenjiahui/Wave-MoE-Skill-Agent/hf_models/Qwen3-8B"
     )
     parser.add_argument("--device", default="cuda:7")
-    parser.add_argument("--dataset", default="ettm1", choices=["ettm1", "etth1", "etth2"])
+    parser.add_argument(
+        "--dataset",
+        default="ettm1",
+        choices=["ettm1", "etth1", "etth2", "electricity", "exchange_rate", "weather", "traffic"],
+    )
     parser.add_argument(
         "--ett-root", type=Path,
         default=Path("/public/chenjiahui/波数据时序基座大模型/UniTS-main/dataset/ETT-small"),
@@ -80,8 +112,25 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=Path("results/icassp/ettm1_router/probe_summary.json"))
     args = parser.parse_args()
 
-    _, test_all = load_ett_all_channels(args.ett_root, args.dataset)
-    ot = 6
+    _, test_all, target_name = load_all_channels(args.ett_root, args.dataset)
+    train_all, _, _ = load_all_channels(args.ett_root, args.dataset)
+    cfg = DATASET_CONFIG[args.dataset]
+    wanted = cfg["file"].lower()
+    candidates = [args.ett_root, args.ett_root / args.dataset, args.ett_root / "ETT-small"]
+    csv_path = next(
+        (
+            p
+            for directory in candidates
+            if directory.is_dir()
+            for p in directory.iterdir()
+            if p.is_file() and p.name.lower() == wanted
+        ),
+        None,
+    )
+    if csv_path is None:
+        raise FileNotFoundError(f"{cfg['file']} not found under {args.ett_root}")
+    frame = pd.read_csv(csv_path)
+    ot = list(frame.columns).index(cfg["target"]) - 1  # date column dropped
     rng = np.random.default_rng(args.seed)
     available = len(test_all) - args.context_len - args.horizon + 1
     starts = np.sort(rng.choice(available, size=min(args.max_windows, available), replace=False))

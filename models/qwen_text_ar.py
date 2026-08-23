@@ -33,6 +33,20 @@ class QwenTextARForecaster:
             raise RuntimeError(
                 "Qwen experiments require transformers; use the wavellm environment"
             ) from exc
+        # Workaround: transformers 4.52's tensor-parallel integration can fail to
+        # initialize (ALL_PARALLEL_STYLES = None), which breaks Qwen3 post_init.
+        try:
+            import transformers.modeling_utils as _mu
+
+            if not isinstance(_mu.ALL_PARALLEL_STYLES, (set, frozenset)):
+                _mu.ALL_PARALLEL_STYLES = frozenset(
+                    {
+                        "tp", "block", "sharded", "pp", "sequence", "rowwise",
+                        "colwise", "naive", "serial", "manual", "flex", "ddp",
+                    }
+                )
+        except Exception:
+            pass
 
         self.device = torch.device(device)
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
