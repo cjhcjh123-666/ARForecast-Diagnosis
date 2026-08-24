@@ -49,7 +49,7 @@ def main() -> None:
     scale = {}
     for model in ["qwen3_0.6b", "qwen3_1.7b", "qwen3_8b"]:
         recog_p, recog_r, floor, parse, mse_ratio, rt_p, rt_r, rt_f = [], [], [], [], [], [], [], []
-        for seed in [7, 17, 27]:
+        for seed in [7, 17, 27, 37, 47]:
             # 8B probe data lives in the ICASSP result dir; others in ICLR dir
             probe_path = ROOT / "probe" / model / f"seed{seed}" / "summary.json"
             if model == "qwen3_8b":
@@ -77,7 +77,7 @@ def main() -> None:
             cache_roots = [ROOT / "router_from_cache" / model]
             if model == "qwen3_8b":
                 cache_roots = []
-            for seed in [7, 17, 27]:
+            for seed in [7, 17, 27, 37, 47]:
                 for root in cache_roots:
                     d = load_json(root / f"seed{seed}" / "summary.json")
                     if d:
@@ -104,7 +104,7 @@ def main() -> None:
     lines.append("| seed | method | in-domain acc | OOD acc vs oracle | OOD MSE |")
     lines.append("|---|---|---|---|---|")
     learned = {}
-    for seed in [7, 17, 27]:
+    for seed in [7, 17, 27, 37, 47]:
         d = load_json(ROOT / "learned_router" / f"seed{seed}" / "summary.json")
         if not d:
             continue

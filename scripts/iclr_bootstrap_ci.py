@@ -39,12 +39,14 @@ def main() -> None:
 
     # collect per-seed probe data
     recog, parse, gen_oracle_ratio, router_p, router_r, router_f = [], [], [], [], [], []
-    for seed in [7, 17, 27]:
+    for seed in [7, 17, 27, 37, 47]:
         probe_path = ROOT / "probe" / args.model / f"seed{seed}" / "summary.json"
         if args.model == "qwen3_8b":
             probe_path = REPO_ROOT / "results" / "icassp" / (
                 "probe" if seed == 7 else f"probe_seed{seed}"
             ) / "summary.json"
+        if not probe_path.is_file():
+            continue
         d = json.loads(probe_path.read_text(encoding="utf-8"))
         recog.append(d["probe"]["pretrained"]["accuracy"])
         pg = d.get("paired_recognize_vs_generate")

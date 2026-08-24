@@ -274,8 +274,8 @@ explanation (Table~\ref{tab:e3b}).
 \toprule
 Model & Recog. acc. & Gen. parse & Gen. MSE & Oracle MSE & Ratio \\
 \midrule
-Qwen3-0.6B & $0.98$ & $0.98$ & $2.87$ & $0.31$ & $9.3\times$ \\
-Qwen3-1.7B & $0.98$ & $0.53$ & $2.90$ & $0.32$ & $9.0\times$ \\
+Qwen3-0.6B & $0.98$ & $0.98$ & $3.31$ & $0.34$ & $9.9\times$ \\
+Qwen3-1.7B & $1.00$ & $0.58$ & $2.73$ & $0.34$ & $8.1\times$ \\
 Qwen3-8B & $0.97$ & $0.27$ & $1.85$ & $0.33$ & $5.5\times$ \\
 \bottomrule
 \end{tabular}
@@ -560,6 +560,9 @@ component---absent in our main protocol---and that recognition is robust to it.
 Bootstrap 95\% CIs (2000 resamples) for the headline numbers: 8B router
 accuracy $0.678$ [0.617, 0.783] vs.\ random $0.289$ [0.267, 0.308] vs.\
 features $0.128$ [0.108, 0.142]; generation/oracle MSE ratio $5.5\times$
-[4.0, 6.5].
+[4.0, 6.5].  The $0.6$B model was extended to five seeds (7/17/27/37/47):
+recognition $0.984\pm0.006$, generation ratio $9.9\times$, and router accuracy
+$0.337$ [0.282, 0.395] vs.\ random $0.217$ [0.200, 0.235] and features $0.162$
+[0.132, 0.192], confirming the ordering at a second scale.
 
 \end{document}
