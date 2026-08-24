@@ -47,7 +47,7 @@ def main() -> None:
     lines.append("| model | recog(pretr) | recog(random) | feat floor | gen parse | gen mse/oracle | router(pretr) | router(random) | router(feat) |")
     lines.append("|---|---|---|---|---|---|---|---|---|")
     scale = {}
-    for model in ["qwen3_0.6b", "qwen3_1.7b", "qwen3_8b"]:
+    for model in ["distilgpt2", "gpt2", "qwen3_0.6b", "qwen3_1.7b", "qwen3_8b"]:
         recog_p, recog_r, floor, parse, mse_ratio, rt_p, rt_r, rt_f = [], [], [], [], [], [], [], []
         for seed in [7, 17, 27, 37, 47]:
             # 8B probe data lives in the ICASSP result dir; others in ICLR dir

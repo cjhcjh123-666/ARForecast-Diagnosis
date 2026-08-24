@@ -1,0 +1,65 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+[ettm1] windows (300, 64)
+[ettm2] windows (300, 64)
+[etth1] windows (300, 64)
+[etth2] windows (300, 64)
+[electricity] windows (300, 64)
+[weather] windows (300, 64)
+[exchange_rate] windows (300, 64)
+[traffic] windows (300, 64)
+[illness] windows (211, 64)
+[m4_daily] windows (300, 64)
+[m4_hourly] windows (300, 64)
+[m4_weekly] windows (300, 64)
+[m4_monthly] windows (300, 64)
+[m4_quarterly] windows (271, 64)
+[m4_yearly] windows (120, 64)
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+[ettm1] extracted pretrained hidden
+[ettm2] extracted pretrained hidden
+[etth1] extracted pretrained hidden
+[etth2] extracted pretrained hidden
+[electricity] extracted pretrained hidden
+[weather] extracted pretrained hidden
+[exchange_rate] extracted pretrained hidden
+[traffic] extracted pretrained hidden
+[illness] extracted pretrained hidden
+[m4_daily] extracted pretrained hidden
+[m4_hourly] extracted pretrained hidden
+[m4_weekly] extracted pretrained hidden
+[m4_monthly] extracted pretrained hidden
+[m4_quarterly] extracted pretrained hidden
+[m4_yearly] extracted pretrained hidden
+[ettm1] extracted random hidden
+[ettm2] extracted random hidden
+[etth1] extracted random hidden
+[etth2] extracted random hidden
+[electricity] extracted random hidden
+[weather] extracted random hidden
+[exchange_rate] extracted random hidden
+[traffic] extracted random hidden
+[illness] extracted random hidden
+[m4_daily] extracted random hidden
+[m4_hourly] extracted random hidden
+[m4_weekly] extracted random hidden
+[m4_monthly] extracted random hidden
+[m4_quarterly] extracted random hidden
+[m4_yearly] extracted random hidden
+[ettm1] windows=300 feat_acc=0.143 llm_acc=0.603 rand_acc=0.330
+[ettm2] windows=300 feat_acc=0.517 llm_acc=0.397 rand_acc=0.297
+[etth1] windows=300 feat_acc=0.103 llm_acc=0.517 rand_acc=0.237
+[etth2] windows=300 feat_acc=0.400 llm_acc=0.467 rand_acc=0.237
+[electricity] windows=300 feat_acc=0.497 llm_acc=0.437 rand_acc=0.380
+[weather] windows=300 feat_acc=0.323 llm_acc=0.507 rand_acc=0.333
+[exchange_rate] windows=300 feat_acc=0.053 llm_acc=0.413 rand_acc=0.243
+[traffic] windows=300 feat_acc=0.837 llm_acc=0.793 rand_acc=0.393
+[illness] windows=211 feat_acc=0.171 llm_acc=0.336 rand_acc=0.270
+[m4_daily] windows=300 feat_acc=0.417 llm_acc=0.257 rand_acc=0.383
+[m4_hourly] windows=300 feat_acc=0.377 llm_acc=0.353 rand_acc=0.370
+[m4_weekly] windows=300 feat_acc=0.553 llm_acc=0.123 rand_acc=0.417
+[m4_monthly] windows=300 feat_acc=0.530 llm_acc=0.170 rand_acc=0.407
+[m4_quarterly] windows=271 feat_acc=0.446 llm_acc=0.144 rand_acc=0.339
+[m4_yearly] windows=120 feat_acc=0.483 llm_acc=0.142 rand_acc=0.392
+saved=results/iclr/multi_dataset_router/gpt2/summary.json

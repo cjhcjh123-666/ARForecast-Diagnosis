@@ -1,0 +1,80 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+{
+  "kinds": [
+    "trend",
+    "periodic",
+    "local",
+    "mixture",
+    "regime"
+  ],
+  "context_len": 64,
+  "horizon": 16,
+  "n_train_per_kind": 90,
+  "n_test_per_kind": 60,
+  "feature_floor": {
+    "accuracy": 0.98
+  },
+  "probe": {
+    "pretrained": {
+      "accuracy": 0.99,
+      "per_kind": {
+        "trend": 1.0,
+        "periodic": 1.0,
+        "local": 0.9833333333333333,
+        "mixture": 0.9666666666666667,
+        "regime": 1.0
+      }
+    },
+    "random": {
+      "accuracy": 0.65,
+      "per_kind": {
+        "trend": 0.9333333333333333,
+        "periodic": 0.45,
+        "local": 0.38333333333333336,
+        "mixture": 0.65,
+        "regime": 0.8333333333333334
+      }
+    }
+  },
+  "paired_recognize_vs_generate": {
+    "windows": 40,
+    "recognize_accuracy": 0.975,
+    "parse_rate": 1.0,
+    "complete_windows": 40,
+    "mse_on_complete": 3.713873735830206,
+    "oracle_mse": 0.3356710778754314,
+    "best_single_expert_mse": 0.7158153449490724,
+    "best_single_expert": "trend"
+  },
+  "zero_shot_router": {
+    "feature": {
+      "routing_acc_vs_oracle": 0.125,
+      "mse": 1.2125612978778633,
+      "soft_routing_mse": 1.2529140057319106
+    },
+    "probe_pretrained": {
+      "routing_acc_vs_oracle": 0.10833333333333334,
+      "mse": 1.8200969668114577,
+      "soft_routing_mse": 1.7314696336693856
+    },
+    "probe_random": {
+      "routing_acc_vs_oracle": 0.11666666666666667,
+      "mse": 1.7188700007804782,
+      "soft_routing_mse": 1.565791067603712
+    },
+    "oracle": {
+      "mse": 0.4522955613099355
+    },
+    "best_single_expert": {
+      "mse": 0.49197565942696486,
+      "name": "trend"
+    },
+    "uniform_ensemble": {
+      "mse": 1.3460761022131125
+    }
+  }
+}
+saved=results/iclr/probe/gpt2/seed7/summary.json
