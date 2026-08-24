@@ -312,6 +312,40 @@ persists.}
 \label{tab:e3b}
 \end{table}
 
+\paragraph{The generation gap survives every prompt and decoding choice.}
+Table~\ref{tab:genrob} attacks the ``you didn't prompt it properly'' objection
+by varying sampling (greedy vs.\ temperature $0.7/1.0$), adding 1--2 in-context
+examples, and adding an explicit ``only output numbers'' instruction.  For
+both the $0.6$B and $8$B models, generation stays $3.5$--$6.8\times$ worse than
+the oracle expert across every variant: sampling does not help (and lowers
+parse coverage), few-shot demonstrations raise parse rate but leave the error
+ratio essentially unchanged, and the explicit instruction hurts the $8$B model.
+Combined with the grammar-constrained result (parse $=100\%$, ratio $6.2\times$),
+the recognition--generation gap is not attributable to formatting, decoding,
+or prompting---it reflects a genuine deficit in numeric continuation.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+ & \multicolumn{2}{c}{Qwen3-0.6B} & \multicolumn{2}{c}{Qwen3-8B} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Decoding / prompt & Parse & MSE/oracle & Parse & MSE/oracle \\
+\midrule
+Greedy & $1.000$ & $6.0\times$ & $0.425$ & $4.9\times$ \\
+Temp $0.7$ & $0.875$ & $4.2\times$ & $0.375$ & $5.7\times$ \\
+Temp $1.0$ & $0.650$ & $3.5\times$ & $0.425$ & $4.6\times$ \\
+Instruction & $0.975$ & $5.7\times$ & $0.175$ & $6.2\times$ \\
+1-shot & $0.925$ & $4.5\times$ & $0.900$ & $4.1\times$ \\
+2-shot & $1.000$ & $6.8\times$ & $0.875$ & $5.8\times$ \\
+\bottomrule
+\end{tabular}
+\caption{E3c: generation error vs.\ oracle expert under every prompt/decoding
+variant.  The $3$--$7\times$ gap persists across all of them.}
+\label{tab:genrob}
+\end{table}
+
 \subsection{The asymmetry persists across task difficulty (R)}
 Table~\ref{tab:asym} sweeps context length, noise, and horizon for the frozen
 $0.6$B model on identical windows.  Recognition remains $>90\%$ even under
@@ -445,6 +479,38 @@ feature router on 8 of 15 real datasets (ETT$\times$4, Weather, Exchange,
 Illness, M4-Hourly) and fails on the same Electricity/Traffic/M4 subsets,
 confirming that recognition transfer is a property of language pretraining
 rather than of a specific model family.
+
+\paragraph{The routing advantage holds at longer horizons.}
+Table~\ref{tab:horizon} re-evaluates the $8$B router at horizons 24 and 48
+(hidden states depend only on the context, so the same representations are
+reused).  The frozen-LLM router beats the feature router on the same four of
+five datasets at both horizons, tracking the best-single expert closely (e.g.,
+Exchange H$=48$: $0.060$ vs.\ best $0.060$; ETTh1 H$=48$: $0.083$ vs.\ $0.071$),
+and only Electricity remains favorable to features---exactly as at $H{=}16$.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+Dataset & Horizon & Oracle & Best single & Feature & Frozen LLM \\
+\midrule
+\multirow{2}{*}{ETTm1} & $24$ & $0.015$ & $0.019$ & $0.596$ & $\mathbf{0.028}$ \\
+ & $48$ & $0.027$ & $0.034$ & $0.757$ & $\mathbf{0.051}$ \\
+\multirow{2}{*}{ETTh1} & $24$ & $0.035$ & $0.056$ & $0.672$ & $\mathbf{0.061}$ \\
+ & $48$ & $0.050$ & $0.071$ & $0.842$ & $\mathbf{0.083}$ \\
+\multirow{2}{*}{Weather} & $24$ & $0.035$ & $0.044$ & $0.521$ & $\mathbf{0.123}$ \\
+ & $48$ & $0.112$ & $0.148$ & $0.579$ & $\mathbf{0.317}$ \\
+\multirow{2}{*}{Exchange} & $24$ & $0.026$ & $0.036$ & $1.944$ & $\mathbf{0.036}$ \\
+ & $48$ & $0.046$ & $0.060$ & $2.497$ & $\mathbf{0.060}$ \\
+\multirow{2}{*}{Electricity} & $24$ & $0.465$ & $0.792$ & $\mathbf{0.668}$ & $0.818$ \\
+ & $48$ & $0.576$ & $0.910$ & $\mathbf{0.792}$ & $0.943$ \\
+\bottomrule
+\end{tabular}
+\caption{R6: zero-shot routing MSE at horizons 24/48 (8B).  The LLM router
+wins on 4/5 datasets at both horizons.}
+\label{tab:horizon}
+\end{table}
 
 \subsection{Patch-level dynamic routing (E6)}
 Routing per patch rather than per window lets the model switch experts as

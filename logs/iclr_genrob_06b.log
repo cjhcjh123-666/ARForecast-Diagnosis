@@ -1,0 +1,16 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+[greedy] parse=1.000 mse=3.446762893980538 oracle_ratio=5.980530105478061
+[temp0.7] parse=0.875 mse=2.430401163832767 oracle_ratio=4.217025590612863
+[temp1.0] parse=0.650 mse=2.0009365931082703 oracle_ratio=3.4718551586868407
+[instruct] parse=0.975 mse=3.25882571078213 oracle_ratio=5.65443747403546
+[fewshot1] parse=0.925 mse=2.571476177008895 oracle_ratio=4.461806966466711
+[fewshot2] parse=1.000 mse=3.894157327142975 oracle_ratio=6.75681091122308
+saved=results/iclr/gen_robustness/qwen3_0.6b/summary.json
