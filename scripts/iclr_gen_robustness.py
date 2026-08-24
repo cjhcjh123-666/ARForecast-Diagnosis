@@ -101,11 +101,17 @@ def main() -> None:
     n = args.n_per_kind
     n_train = args.n_train_per_kind
     n_test = n - n_train
+    # stratify across all 5 kinds: first 8 TEST windows of each kind (matches
+    # run_frozen_probe.py, so numbers are directly comparable with E3/family-scale)
+    test_idx = np.concatenate(
+        [np.arange(k * n + n_train, (k + 1) * n) for k in range(5)]
+    )
     per_kind_gen = args.max_gen_windows // len(KINDS)
-    test_start = n_train
-    gen_idx = np.concatenate([np.arange(k * n_test, k * n_test + per_kind_gen) for k in range(5)])
-    ctx = contexts[test_start:][gen_idx]
-    fut = futures[test_start:][gen_idx]
+    gen_idx = np.concatenate(
+        [np.arange(k * n_test, k * n_test + per_kind_gen) for k in range(5)]
+    )
+    ctx = contexts[test_idx[gen_idx]]
+    fut = futures[test_idx[gen_idx]]
 
     # oracle expert error on these windows
     experts = [TrendExpert(), PeriodicExpert(), LocalExpert()]

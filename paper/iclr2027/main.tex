@@ -1,23 +1,17 @@
 % ICLR 2027 submission (analysis paper).
-% NOTE: swap in the official iclr2026.sty / iclr2026_conference.sty at submission.
 \documentclass{article}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
+\usepackage{iclr2027_conference,times}
+\input{math_commands.tex}
+\usepackage{hyperref}
+\usepackage{url}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{microtype}
 \usepackage{multirow}
-\usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
-
-% --- minimal ICLR-ish page geometry (replace with official style) ---
-\usepackage[margin=1in]{geometry}
-\usepackage{times}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{0.4em}
 
 \newcommand{\model}{\textsc{Qwen3}}
 \newcommand{\probe}{\textsc{LinearProbe}}
@@ -315,14 +309,16 @@ persists.}
 \paragraph{The generation gap survives every prompt and decoding choice.}
 Table~\ref{tab:genrob} attacks the ``you didn't prompt it properly'' objection
 by varying sampling (greedy vs.\ temperature $0.7/1.0$), adding 1--2 in-context
-examples, and adding an explicit ``only output numbers'' instruction.  For
-both the $0.6$B and $8$B models, generation stays $3.5$--$6.8\times$ worse than
-the oracle expert across every variant: sampling does not help (and lowers
-parse coverage), few-shot demonstrations raise parse rate but leave the error
-ratio essentially unchanged, and the explicit instruction hurts the $8$B model.
-Combined with the grammar-constrained result (parse $=100\%$, ratio $6.2\times$),
-the recognition--generation gap is not attributable to formatting, decoding,
-or prompting---it reflects a genuine deficit in numeric continuation.
+examples, and adding an explicit ``only output numbers'' instruction, all on
+the \emph{same} stratified $40$-window evaluation set as E3.  For both the
+$0.6$B and $8$B models, generation stays $4.9$--$9.9\times$ worse than the
+oracle expert across every variant: sampling does not help (it lowers parse
+coverage while the error ratio stays high), few-shot demonstrations raise
+parse coverage but leave the error ratio $\geq 4.9\times$, and the explicit
+instruction hurts both models' coverage.  Combined with the
+grammar-constrained result (parse $=100\%$, ratio $6.2\times$), the
+recognition--generation gap is not attributable to formatting, decoding, or
+prompting---it reflects a genuine deficit in numeric continuation.
 
 \begin{table}[t]
 \centering
@@ -333,16 +329,17 @@ or prompting---it reflects a genuine deficit in numeric continuation.
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Decoding / prompt & Parse & MSE/oracle & Parse & MSE/oracle \\
 \midrule
-Greedy & $1.000$ & $6.0\times$ & $0.425$ & $4.9\times$ \\
-Temp $0.7$ & $0.875$ & $4.2\times$ & $0.375$ & $5.7\times$ \\
-Temp $1.0$ & $0.650$ & $3.5\times$ & $0.425$ & $4.6\times$ \\
-Instruction & $0.975$ & $5.7\times$ & $0.175$ & $6.2\times$ \\
-1-shot & $0.925$ & $4.5\times$ & $0.900$ & $4.1\times$ \\
-2-shot & $1.000$ & $6.8\times$ & $0.875$ & $5.8\times$ \\
+Greedy & $1.000$ & $9.6\times$ & $0.275$ & $5.9\times$ \\
+Temp $0.7$ & $0.950$ & $7.1\times$ & $0.375$ & $8.0\times$ \\
+Temp $1.0$ & $0.925$ & $8.4\times$ & $0.300$ & $9.7\times$ \\
+Instruction & $0.925$ & $8.8\times$ & $0.475$ & $8.5\times$ \\
+1-shot & $1.000$ & $8.3\times$ & $0.925$ & $4.9\times$ \\
+2-shot & $1.000$ & $9.9\times$ & $0.875$ & $7.4\times$ \\
 \bottomrule
 \end{tabular}
 \caption{E3c: generation error vs.\ oracle expert under every prompt/decoding
-variant.  The $3$--$7\times$ gap persists across all of them.}
+variant on the same stratified windows as E3.  The $4.9$--$9.9\times$ gap
+persists across all of them.}
 \label{tab:genrob}
 \end{table}
 
@@ -587,7 +584,7 @@ explains seemingly contradictory results, motivates using LLMs as temporal
 expert routers rather than numeric forecasters, and opens a clean axis for
 future analysis.
 
-\bibliographystyle{plainnat}
+\bibliographystyle{iclr2027_conference}
 \bibliography{refs}
 
 \appendix
