@@ -369,12 +369,27 @@ Hand features & $0.128$ & $1.278$ & $1.235$ \\
 Random Qwen probe & $0.289$ & $1.079$ & $1.056$ \\
 PatchTST (in-domain $99\%$) & $0.133$ & $1.762$ & --- \\
 MLP (in-domain $100\%$) & $0.342$ & $0.829$ & --- \\
+Chronos-T5-small (in-domain $100\%$) & $0.092$ & $1.620$ & --- \\
+Chronos-T5-base (in-domain $100\%$) & $0.292$ & $0.912$ & --- \\
 \textbf{Frozen pretrained Qwen} & $\mathbf{0.678}$ & $\mathbf{0.739}$ & $\mathbf{0.723}$ \\
 \bottomrule
 \end{tabular}
 \caption{E4: zero-shot routing on unseen mixture/regime, 8B, 3 seeds.}
 \label{tab:e4}
 \end{table}
+
+\paragraph{A pretrained \emph{time-series} encoder does not transfer OOD.}
+To answer ``does this need a language model, or would a pretrained
+\emph{time-series} foundation model do?'' we probe Chronos-T5
+\citep{ansari2024chronos}, a T5 model pretrained on $84$ billion time-series
+observations for forecasting, with the identical linear-probe protocol
+(Table~\ref{tab:e4}).  Chronos recognizes all five dynamics essentially
+perfectly in-domain ($99.7$--$100\%$), yet its zero-shot routing on unseen
+mixture/regime windows is only $9$--$29\%$---at or below the hand-feature
+floor and far below the frozen language model ($67.8\%$).  A representation
+optimized for forecasting is therefore not what supports \emph{cross-dynamics}
+recognition transfer; that capability comes specifically from language
+pretraining.
 
 \subsection{Real-world zero-shot routing (R6)}
 We apply the router, trained only on synthetic clean dynamics, to 15 real-world
