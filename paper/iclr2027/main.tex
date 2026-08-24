@@ -371,6 +371,7 @@ PatchTST (in-domain $99\%$) & $0.133$ & $1.762$ & --- \\
 MLP (in-domain $100\%$) & $0.342$ & $0.829$ & --- \\
 Chronos-T5-small (in-domain $100\%$) & $0.092$ & $1.620$ & --- \\
 Chronos-T5-base (in-domain $100\%$) & $0.292$ & $0.912$ & --- \\
+Chronos-Bolt-small (in-domain $100\%$) & $0.300$ & $0.894$ & --- \\
 \textbf{Frozen pretrained Qwen} & $\mathbf{0.678}$ & $\mathbf{0.739}$ & $\mathbf{0.723}$ \\
 \bottomrule
 \end{tabular}
@@ -384,12 +385,17 @@ To answer ``does this need a language model, or would a pretrained
 \citep{ansari2024chronos}, a T5 model pretrained on $84$ billion time-series
 observations for forecasting, with the identical linear-probe protocol
 (Table~\ref{tab:e4}).  Chronos recognizes all five dynamics essentially
-perfectly in-domain ($99.7$--$100\%$), yet its zero-shot routing on unseen
-mixture/regime windows is only $9$--$29\%$---at or below the hand-feature
+perfectly in-domain ($99.7$--$100\%$ for both the value-tokenized Chronos-T5
+and the patch-based Chronos-Bolt), yet zero-shot routing on unseen
+mixture/regime windows is only $9$--$30\%$---at or barely above the hand-feature
 floor and far below the frozen language model ($67.8\%$).  A representation
 optimized for forecasting is therefore not what supports \emph{cross-dynamics}
 recognition transfer; that capability comes specifically from language
-pretraining.
+pretraining.  Across all six Chronos variants (T5-small/base/large and
+Bolt-small/base/tiny, ranging $8$--$300$M parameters), recognition is
+$99.7$--$100\%$ while OOD routing stays $9$--$36\%$---never approaching the
+frozen LLM---confirming that the routing advantage is not a matter of model
+capacity or pretraining scale on time-series data.
 
 \subsection{Real-world zero-shot routing (R6)}
 We apply the router, trained only on synthetic clean dynamics, to 15 real-world

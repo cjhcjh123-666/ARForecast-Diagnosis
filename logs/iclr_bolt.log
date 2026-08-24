@@ -1,0 +1,29 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+[bolt] embeddings shape (750, 512)
+{
+  "model": "chronos-bolt-small",
+  "context_len": 64,
+  "horizon": 16,
+  "seed": 7,
+  "recognition_acc": 1.0,
+  "per_kind": {
+    "trend": 1.0,
+    "periodic": 1.0,
+    "local": 1.0,
+    "mixture": 1.0,
+    "regime": 1.0
+  },
+  "router": {
+    "acc_vs_oracle": 0.3,
+    "mse": 0.8936706305777127,
+    "in_domain_acc_vs_oracle": 0.6111111111111112,
+    "feature_acc_vs_oracle": 0.125,
+    "oracle_mse": 0.4522955613099355,
+    "best_single_mse": 0.49197565942696486
+  },
+  "n_hard": 120
+}
+saved=results/iclr/chronos/chronos-bolt-small_seed7/summary.json
