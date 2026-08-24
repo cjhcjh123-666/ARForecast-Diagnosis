@@ -1,0 +1,38 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+[layerwise] extracting 29 layers
+[layerwise] hidden shape (layers, windows, dim) = (29, 750, 1024)
+{
+  "0": 0.2,
+  "1": 0.86,
+  "2": 0.9033333333333333,
+  "3": 0.9033333333333333,
+  "4": 0.9,
+  "5": 0.8866666666666667,
+  "6": 0.8766666666666667,
+  "7": 0.8566666666666667,
+  "8": 0.8433333333333334,
+  "9": 0.8566666666666667,
+  "10": 0.85,
+  "11": 0.8466666666666667,
+  "12": 0.86,
+  "13": 0.87,
+  "14": 0.86,
+  "15": 0.84,
+  "16": 0.8466666666666667,
+  "17": 0.8433333333333334,
+  "18": 0.8066666666666666,
+  "19": 0.82,
+  "20": 0.8,
+  "21": 0.7833333333333333,
+  "22": 0.8033333333333333,
+  "23": 0.7966666666666666,
+  "24": 0.8066666666666666,
+  "25": 0.81,
+  "26": 0.8033333333333333,
+  "27": 0.7966666666666666,
+  "28": 0.79
+}
+saved=results/iclr/layerwise/qwen3_0.6b_random/summary.json

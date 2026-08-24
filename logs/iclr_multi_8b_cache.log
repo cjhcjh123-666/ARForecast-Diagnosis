@@ -1,0 +1,18 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+[electricity] feat=0.497 llm=0.420 rand=0.440
+[etth1] feat=0.103 llm=0.510 rand=0.550
+[etth2] feat=0.400 llm=0.523 rand=0.547
+[ettm1] feat=0.143 llm=0.543 rand=0.707
+[ettm2] feat=0.517 llm=0.517 rand=0.747
+[exchange_rate] feat=0.053 llm=0.540 rand=0.540
+[illness] feat=0.171 llm=0.450 rand=0.450
+[m4_daily] feat=0.417 llm=0.257 rand=0.257
+[m4_hourly] feat=0.377 llm=0.330 rand=0.327
+[m4_monthly] feat=0.530 llm=0.160 rand=0.160
+[m4_quarterly] feat=0.446 llm=0.148 rand=0.148
+[m4_weekly] feat=0.553 llm=0.123 rand=0.123
+[m4_yearly] feat=0.483 llm=0.125 rand=0.125
+[traffic] feat=0.837 llm=0.793 rand=0.840
+[weather] feat=0.323 llm=0.443 rand=0.727
+saved=results/iclr/multi_dataset_router/qwen3_8b/summary.json
