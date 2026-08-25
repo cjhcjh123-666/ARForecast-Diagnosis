@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -34,6 +35,9 @@ KINDS = ["trend", "periodic", "local", "mixture", "regime"]
 
 
 def _cache_dir(model: str, seed: int) -> Path:
+    override = os.environ.get("ICLR_PROBE_CACHE_ROOT")
+    if override:
+        return Path(override) / f"seed{seed}" / "cache"
     if model == "qwen3_8b":
         root = REPO_ROOT / "results/icassp" / ("probe" if seed == 7 else f"probe_seed{seed}")
     else:
