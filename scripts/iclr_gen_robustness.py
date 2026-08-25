@@ -77,7 +77,7 @@ def generate(model, tokenizer, prompts, device, horizon, mode, batch_size=8,
         ilen = enc["input_ids"].size(1)
         for r in range(gen.size(0)):
             text = tokenizer.decode(gen[r, ilen:], skip_special_tokens=True)
-            nums = [float(m) for m in re.findall(r"[+-]?\d\.\d\d", text)]
+            nums = [float(m) for m in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)]
             forecasts.append(nums[:horizon])
             valid.append(len(nums[:horizon]) == horizon)
     return forecasts, np.asarray(valid, dtype=bool)

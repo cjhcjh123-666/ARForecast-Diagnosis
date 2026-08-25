@@ -33,7 +33,7 @@ NUMERIC_CHARS = set("0123456789+-. ")
 
 
 def parse_numbers(text: str, horizon: int) -> list[float]:
-    return [float(m) for m in re.findall(r"[+-]?\d\.\d\d", text)][:horizon]
+    return [float(m) for m in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)][:horizon]
 
 
 def numeric_token_mask(tokenizer) -> torch.Tensor:

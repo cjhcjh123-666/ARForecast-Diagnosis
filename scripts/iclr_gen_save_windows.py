@@ -84,11 +84,11 @@ def run_generation_per_window(model_tag, seed, ctx, fut, oracle_mse, args):
         ilen = enc["input_ids"].size(1)
         for r in range(gen.size(0)):
             text = tokenizer.decode(gen[r, ilen:], skip_special_tokens=True)
-            nums = [float(m) for m in re.findall(r"[+-]?\d\.\d\d", text)][:16]
+            nums = [float(m) for m in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)][:16]
             i = start + r
             if len(nums) == 16:
                 mse = float(np.mean((np.asarray(nums) - fut[i]) ** 2))
-                pairs.append([mse, float(oracle_mse[i])])
+                pairs.append([mse, float(oracle_mse[i]), int(i)])
     del model
     torch.cuda.empty_cache()
     return {"n_parsed": len(pairs), "n_total": int(len(ctx)),

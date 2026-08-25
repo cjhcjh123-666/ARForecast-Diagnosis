@@ -106,7 +106,7 @@ class RandomBPETextARModel(nn.Module):
                 next_token = self.lm_head(hidden[:, -1]).argmax(dim=-1, keepdim=True)
                 generated = torch.cat([generated, next_token], dim=1)
             text = self.tokenizer.decode(generated[0, -max(32, horizon * 8) :], skip_special_tokens=True)
-            numbers = [float(match) for match in re.findall(r"[+-]?\d\.\d\d", text)]
+            numbers = [float(match) for match in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)]
             forecasts.append(numbers[:horizon])
             texts.append(text)
         return forecasts, texts

@@ -463,19 +463,23 @@ M4 (6 freqs) & --- & --- & best & \emph{not better} \\
 
 \paragraph{Scale improves real-data routing.}
 The $8$B router (full table in Appendix~\ref{app:real8}) is stronger on the
-same datasets: ETTh1 MSE $0.047$ (vs.\ feature $0.581$, $12\times$), ETTh2
-$0.218$ (vs.\ $0.610$), ETTm1 $0.022$ (vs.\ $0.521$), Exchange $0.027$ (vs.\
-$1.591$, $59\times$), Weather $0.082$ (vs.\ $0.482$), Illness $1.455$ (vs.\
-$4.620$).  On the periodic-dominated datasets (ETTm2, Weather, Exchange) the
-``always-periodic'' degenerate baseline is near-optimal and the LLM router
-matches it without harm; on Electricity and Traffic the feature router remains
-better; and on M4 both routers fail, showing that recognition transfer requires
-diverse structure and does not hold universally.  The cross-family pattern is
-the same: a GPT-2 router trained only on synthetic clean dynamics beats the
-feature router on 8 of 15 real datasets (ETT$\times$4, Weather, Exchange,
-Illness, M4-Hourly) and fails on the same Electricity/Traffic/M4 subsets,
-confirming that recognition transfer is a property of language pretraining
-rather than of a specific model family.
+same datasets: ETTh1 MSE $0.045$ (vs.\ feature $0.581$, $13\times$), ETTh2
+$0.220$ (vs.\ $0.610$), ETTm1 $0.016$ (vs.\ $0.521$, $33\times$), Exchange
+$0.028$ (vs.\ $1.591$, $58\times$), Weather $0.041$ (vs.\ $0.482$), Illness
+$1.455$ (vs.\ $4.620$).  Across three router-training seeds on the same
+evaluation windows, the LM router shows \emph{seven nominally significant}
+gains (ETT$\times$4, Exchange, Weather, Illness), seven nominally significant
+losses (Electricity, Traffic, and five M4 frequencies), and one inconclusive
+comparison (M4-Hourly); no multiple-comparison correction is applied and these
+real-data results are treated as an exploratory boundary check.  On the
+periodic-dominated datasets (ETTm2, Weather, Exchange) the ``always-periodic''
+degenerate baseline is near-optimal and the LLM router matches it without
+harm; on Electricity and Traffic the feature router remains better; and on M4
+both routers fail, showing that recognition transfer requires diverse
+structure and does not hold universally.  The cross-family pattern is the
+same: a GPT-2 router trained only on synthetic clean dynamics beats the
+feature router on 8 of 15 real datasets, confirming that recognition transfer
+is a property of language pretraining rather than of a specific model family.
 
 \paragraph{The routing advantage holds at longer horizons.}
 Table~\ref{tab:horizon} re-evaluates the $8$B router at horizons 24 and 48
@@ -630,14 +634,14 @@ See Table~\ref{tab:real8}.
 Dataset & Feature MSE & Frozen-LLM MSE & Best single \\
 \midrule
 Electricity & $\mathbf{0.740}$ & $0.927$ & local/$0.855$ \\
-ETTh1 & $0.581$ & $\mathbf{0.047}$ & periodic/$0.045$ \\
-ETTh2 & $0.610$ & $\mathbf{0.218}$ & periodic/$0.211$ \\
-ETTm1 & $0.521$ & $\mathbf{0.022}$ & periodic/$0.015$ \\
-ETTm2 & $0.327$ & $0.151$ & periodic/$0.064$ \\
-Exchange & $1.591$ & $\mathbf{0.027}$ & periodic/$0.027$ \\
+ETTh1 & $0.581$ & $\mathbf{0.045}$ & periodic/$0.045$ \\
+ETTh2 & $0.610$ & $\mathbf{0.220}$ & periodic/$0.211$ \\
+ETTm1 & $0.521$ & $\mathbf{0.016}$ & periodic/$0.015$ \\
+ETTm2 & $0.327$ & $0.114$ & periodic/$0.064$ \\
+Exchange & $1.591$ & $\mathbf{0.028}$ & periodic/$0.027$ \\
 Illness & $4.620$ & $\mathbf{1.455}$ & trend/$1.067$ \\
 Traffic & $\mathbf{0.771}$ & $0.916$ & periodic/$0.883$ \\
-Weather & $0.482$ & $\mathbf{0.082}$ & periodic/$0.025$ \\
+Weather & $0.482$ & $\mathbf{0.041}$ & periodic/$0.025$ \\
 M4-Daily & $\mathbf{1.244}$ & $1.826$ & local/$1.213$ \\
 M4-Hourly & $214.8$ & $\mathbf{214.0}$ & periodic/$214.0$ \\
 M4-Weekly & $\mathbf{1.419}$ & $2.524$ & local/$1.419$ \\
@@ -646,9 +650,39 @@ M4-Quarterly & $\mathbf{1.233}$ & $1.996$ & local/$1.233$ \\
 M4-Yearly & $\mathbf{1.164}$ & $1.938$ & local/$1.164$ \\
 \bottomrule
 \end{tabular}
-\caption{R6 full: 8B zero-shot routing MSE across 15 datasets.}
+\caption{R6 full: official Qwen3-8B-Base zero-shot routing MSE across 15
+datasets (seed 7, 300 windows per dataset).}
 \label{tab:real8}
 \end{table}
+
+\paragraph{Real-data window sampling.}
+For each non-M4 dataset we sample up to $300$ test windows by drawing
+non-overlapping start positions uniformly at random without replacement
+(context length $64$, horizon $16$), so windows within a dataset do not
+overlap; each window is normalized using only its own context statistics.
+ETT datasets use the standard $12/4/4$ month split; the remaining datasets use
+a $70/30$ chronological split.  Because consecutive starts are drawn without
+replacement from the available range, the effective stride is large relative
+to the window length, and we report window-level bootstrap intervals
+accordingly.
+
+\paragraph{M4 evaluation protocol.}
+M4 windows are sampled \emph{within the official training series} rather than
+the official test series for two reasons: (i) the official competition
+horizons ($6$--$48$, depending on frequency) differ from the uniform $H{=}16$
+protocol used here, and (ii) using the short official test series would yield
+far too few $C{=}64,H{=}16$ rolling windows for a stable evaluation.  This is
+therefore a boundary-transfer diagnostic over many real macro series, not a
+leaderboard evaluation.
+
+\paragraph{Numerical parser.}
+Generated completions are parsed with the regular expression
+\texttt{(?<![0-9])[+-]?$\backslash$d+$\backslash$.$\backslash$d\{2\}} (any number
+of integer digits, exactly two decimals, with a digit boundary), taking the
+first $H$ matches.  An audit of all raw completions across models and seeds
+found \emph{zero} generated values with magnitude $\geq 10$ and zero windows
+where a one-digit-integer parser would have differed, so the reported parse
+rates and MSEs are unaffected by the integer-width choice.
 
 \subsection{Random-BPE tokenizer ablation}
 \label{app:random_bpe}

@@ -171,7 +171,7 @@ def frozen_generation(
             text = tokenizer.decode(
                 generated[row_index, input_length:], skip_special_tokens=True
             )
-            numbers = [float(match) for match in re.findall(r"[+-]?\d\.\d\d", text)]
+            numbers = [float(match) for match in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)]
             forecasts.append(numbers[:horizon])
     valid = [len(row) == horizon for row in forecasts]
     errors = []

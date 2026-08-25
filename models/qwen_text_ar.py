@@ -178,7 +178,7 @@ class QwenTextARForecaster:
         for row_index in range(generated.size(0)):
             new_tokens = generated[row_index, input_length:]
             text = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
-            numbers = [float(match) for match in re.findall(r"[+-]?\d\.\d\d", text)]
+            numbers = [float(match) for match in re.findall(r"(?<![0-9])[+-]?\d+\.\d{2}", text)]
             forecasts.append(numbers[:horizon])
             texts.append(text)
         return forecasts, texts
