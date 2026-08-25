@@ -377,56 +377,97 @@ Axis & Setting & Recog. acc. & Gen. parse & Gen. / oracle \\
 
 \subsection{Zero-shot routing: recognition transfers OOD (E4)}
 The probe is trained on the three clean dynamics and evaluated on unseen
-mixture/regime windows (Table~\ref{tab:e4}).  The frozen pretrained LLM router
-reaches $67.8\%$ oracle-hit and MSE $0.739$, far better than hand features
-($12.8\%$, MSE $1.278$), a random control ($28.9\%$), and---decisively for the
-``is a language model necessary?'' question---supervised learners trained on
-the \emph{same} three classes: a PatchTST-style encoder overfits the clean
-classes (in-domain $99$--$100\%$) but transfers at only $13.3\%$ OOD, and an
-MLP transfers at $34.2\%$.  The transfer therefore comes from the language-
-pretrained representation, not from being a better supervised classifier.
+mixture/regime windows.  Because the raw mixture/regime set is dominated by
+trend-oracle windows ($\sim$87\%; local-oracle windows are structurally
+absent), raw oracle-hit accuracy and overall MSE are misleading and
+favourable to a trivial constant-trend policy.  We therefore treat this set as
+a diagnostic (Table~\ref{tab:e4}) and use a \emph{balanced} OOD test as the
+primary evidence (Table~\ref{tab:e4bal}): we rejection-sample mixture/regime
+windows so that the trend-oracle and periodic-oracle classes are equally
+represented (60 each, per seed, no OOD tuning).
+
+On the balanced set, the frozen official Qwen3-8B-Base router reaches
+balanced accuracy $0.764\pm0.035$, macro-$F_1$ $0.775\pm0.032$, and routed MSE
+$0.536$, and is the \emph{only} method that routes both oracle classes
+correctly (trend recall $0.72$, periodic recall $0.81$).  Every alternative is
+far below: a supervised MLP ($0.483$ balanced accuracy, MSE $1.147$), a
+PatchTST encoder ($0.292$, MSE $1.971$), Chronos-T5-small/base ($0.133/0.264$,
+MSE $2.06/1.04$), order-free marginal statistics ($0.475$, MSE $0.789$),
+temporal hand features ($0.436$, MSE $1.129$), a random control ($0.022$, MSE
+$2.885$), and constant-trend ($0.500$, MSE $0.590$).  Paired window-level
+intervals show the Qwen router's MSE is significantly lower than every
+baseline on most seeds (all three seeds for features, PatchTST, both Chronos
+models, and random; two of three seeds for marginal, MLP, and constant-trend).
+The transfer therefore comes from the language-pretrained representation, not
+from being a better supervised classifier nor from the tested
+time-series-pretrained representations.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lccc}
+\begin{tabular}{lcc}
 \toprule
-Router & Oracle-hit acc. & MSE & Soft MSE \\
+Router & Raw oracle-hit & MSE \\
 \midrule
-Oracle (upper bound) & --- & $0.452$ & --- \\
-Best single expert & --- & $0.492$ & --- \\
-Uniform ensemble & --- & $1.346$ & --- \\
-Hand features & $0.128$ & $1.278$ & $1.235$ \\
-Random Qwen probe & $0.289$ & $1.079$ & $1.056$ \\
-PatchTST (in-domain $99\%$) & $0.133$ & $1.762$ & --- \\
-MLP (in-domain $100\%$) & $0.342$ & $0.829$ & --- \\
-Chronos-T5-small (in-domain $100\%$) & $0.092$ & $1.620$ & --- \\
-Chronos-T5-base (in-domain $100\%$) & $0.292$ & $0.912$ & --- \\
-Chronos-Bolt-small (in-domain $100\%$) & $0.300$ & $0.894$ & --- \\
-\textbf{Frozen pretrained Qwen} & $\mathbf{0.678}$ & $\mathbf{0.739}$ & $\mathbf{0.723}$ \\
+Oracle (upper bound) & --- & $0.447$ \\
+Constant trend & $\sim0.87$ & $0.500$ \\
+Hand features & $0.133$ & $1.222$ \\
+Random Qwen probe & $0.278$ & $1.098$ \\
+\textbf{Frozen Qwen3-8B-Base} & $0.864$ & $0.538$ \\
 \bottomrule
 \end{tabular}
-\caption{E4: zero-shot routing on unseen mixture/regime, 8B, 3 seeds.}
+\caption{E4 imbalanced-set diagnostic (mixture/regime, 3 seeds pooled): raw
+metrics are dominated by the majority (trend) oracle class and a constant-trend
+policy already achieves high raw accuracy; see Table~\ref{tab:e4bal} for the
+balanced test.}
 \label{tab:e4}
 \end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Representation & Balanced acc. & Macro-$F_1$ & MSE & Rec.\ T/P \\
+\midrule
+\textbf{Frozen Qwen3-8B-Base} & $\mathbf{0.764}$ & $\mathbf{0.775}$ & $\mathbf{0.536}$ & $0.72/0.81$ \\
+Constant trend & $0.500$ & $0.333$ & $0.590$ & $1.00/0.00$ \\
+Marginal statistics & $0.475$ & $0.355$ & $0.789$ & $0.93/0.02$ \\
+MLP & $0.483$ & $0.549$ & $1.147$ & $0.64/0.32$ \\
+Hand features & $0.436$ & $0.303$ & $1.129$ & $0.00/0.87$ \\
+Chronos-T5-base & $0.264$ & $0.232$ & $1.038$ & $0.48/0.04$ \\
+PatchTST & $0.292$ & $0.403$ & $1.971$ & $0.26/0.32$ \\
+Chronos-T5-small & $0.133$ & $0.182$ & $2.056$ & $0.23/0.04$ \\
+Random Qwen3-8B & $0.022$ & $0.037$ & $2.885$ & $0.04/0.00$ \\
+\bottomrule
+\end{tabular}
+\caption{E4 balanced OOD test: trend/periodic-oracle balanced (60 each, 3
+seeds pooled), official Qwen3-8B-Base.  Balanced accuracy, macro-$F_1$, routed
+MSE, and per-class recall.  Qwen is the only method covering both oracle
+classes.}
+\label{tab:e4bal}
+\end{table}
+
+\paragraph{Imbalanced-set diagnostic (honest caveat).}
+On the raw mixture/regime set (Table~\ref{tab:e4}), the oracle is trend-
+dominated and raw metrics are dominated by the majority class: constant-trend
+achieves $\sim$87\% raw oracle-hit and MSE $0.50$; the official Qwen router
+reaches $86.4\%$ raw oracle-hit and MSE $0.538$ (better than random $0.278$ and
+features $0.133$), and its paired MSE is not reliably below constant-trend
+(significant only on one of three seeds).  We therefore do \emph{not} claim
+that routing reduces MSE on this benchmark; the balanced test in
+Table~\ref{tab:e4bal} is the evidence for compositional recognition transfer.
 
 \paragraph{A pretrained \emph{time-series} encoder does not transfer OOD.}
 To answer ``does this need a language model, or would a pretrained
 \emph{time-series} foundation model do?'' we probe Chronos-T5
-\citep{ansari2024chronos}, a T5 model pretrained on $84$ billion time-series
-observations for forecasting, with the identical linear-probe protocol
-(Table~\ref{tab:e4}).  Chronos recognizes all five dynamics essentially
-perfectly in-domain ($99.7$--$100\%$ for both the value-tokenized Chronos-T5
-and the patch-based Chronos-Bolt), yet zero-shot routing on unseen
-mixture/regime windows is only $9$--$30\%$---at or barely above the hand-feature
-floor and far below the frozen language model ($67.8\%$).  A representation
+\citep{ansari2024chronos} with the identical linear-probe protocol.  Chronos
+recognizes all five dynamics essentially perfectly in-domain ($99.7$--$100\%$),
+yet on the balanced OOD test it routes at $0.13$--$0.26$ balanced accuracy and
+MSE $1.0$--$2.1$, far below the frozen language model.  A representation
 optimized for forecasting is therefore not what supports \emph{cross-dynamics}
 recognition transfer; that capability comes specifically from language
-pretraining.  Across all six Chronos variants (T5-small/base/large and
-Bolt-small/base/tiny, ranging $8$--$300$M parameters), recognition is
-$99.7$--$100\%$ while OOD routing stays $9$--$36\%$---never approaching the
-frozen LLM---confirming that the routing advantage is not a matter of model
-capacity or pretraining scale on time-series data.
+pretraining.
 
 \subsection{Real-world zero-shot routing (R6)}
 We apply the router, trained only on synthetic clean dynamics, to 15 real-world
