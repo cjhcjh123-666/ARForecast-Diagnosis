@@ -16,21 +16,21 @@
 
 | File | Content |
 |---|---|
-| `metrics.csv` | **240 rows** — one per (model, init, seed, task, test_set); fields: accuracy / balanced_accuracy / macro_f1 / recall_trend / recall_periodic / recall_local / mse / head_params |
+| `metrics.csv` | **324 rows** — one per (model, init, seed, task, test_set); fields: accuracy / balanced_accuracy / macro_f1 / recall_trend / recall_periodic / recall_local / mse / head_params |
 | `perwindow/pw_<model>_<init>_s<seed>.npz` (42 files) | per-window arrays: `a_true/a_pred`, `as_true/as_pred`, `b_future/b_pred`, `c_{bal3,bal3n}_{oracle,pred,err}` (err = 3 experts' per-window MSE), `n_future/n_pred` |
 | `config.json` | checkpoints, families, dims, pooling, normalization, training settings, native point-extraction, and the **Moirai pipeline note** |
 
 ## 3. Models
 
-| model | family | dim | pooling | native interface |
-|---|---|---:|---|---|
-| qwen3_8b_base | LLM (decoder-only, text tok.) | 4096 | last-token hidden | n/a (LM generation) |
-| chronos_t5-small | T5 seq2seq TS FM | 512 | encoder last token (EOS) | median of 20 samples |
-| chronos_t5-base | T5 seq2seq TS FM | 768 | encoder last token (EOS) | median of 20 samples |
-| chronos_bolt-small | patched T5 TS FM (Chronos-Bolt) | 512 | encoder [REG] token | 0.5 quantile |
-| timesfm_2.5-200m | decoder-only patched TS FM | 1280 | last patch hidden | decode point idx 5 |
-| moment-1-large | encoder-only patch TS FM (flan-t5-large) | 1024 | MOMENT embed mean | n/a (learned head) |
-| moirai-1.1-R-small | patch×variate encoder TS FM (uni2ts 1.x) | 384 | last patch-token hidden (p=16) | median of 50 samples (p=16) |
+| model | family | params | dim | pooling | native interface |
+|---|---|---:|---:|---|---|
+| qwen3_8b_base | LLM (decoder-only, text tok.) | 8.19B | 4096 | last-token hidden | n/a (LM generation) |
+| chronos_t5-small | T5 seq2seq TS FM | 46M | 512 | encoder last token (EOS) | median of 20 samples |
+| chronos_t5-base | T5 seq2seq TS FM | 201M | 768 | encoder last token (EOS) | median of 20 samples |
+| chronos_bolt-small | patched T5 TS FM (Chronos-Bolt) | 48M | 512 | encoder [REG] token | 0.5 quantile |
+| timesfm_2.5-200m | decoder-only patched TS FM | 231M | 1280 | last patch hidden | decode point idx 5 |
+| moment-1-large | encoder-only patch TS FM (flan-t5-large) | 346M | 1024 | MOMENT embed mean | n/a (learned head) |
+| moirai-1.1-R-small | patch×variate encoder TS FM (uni2ts 1.x) | 14M | 384 | last patch-token hidden (p=16) | median of 50 samples (p=16) |
 
 > **Moirai note**: Moirai's attention operates on (patch × variate) tokens and cannot be fed a raw `(B,64)` tensor; inputs are constructed exactly like `MoiraiForecast._convert` (target `(B, n_patch, max_patch=128)` + sample/time/variate ids + masks). Env workarounds (jaxtyping shim, einops/dynamo skip, uni2ts `__init__` bypass) are in `config.json`.
 
@@ -57,6 +57,20 @@
 | timesfm_2.5-200m | 0.775 / 0.775 | 0.183 / 0.483 | 1.000 / 0.825 |
 | moment-1-large | 0.258 / 0.767 | 0.642 / 0.475 | 0.992 / 0.933 |
 | moirai-1.1-R-small | 0.267 / 0.633 | 0.425 / 0.408 | 1.000 / 0.925 |
+
+### 4.2 C with oracle-expert training labels (`C_routing_oracle`, bal3, mean over seeds, pretrained | random)
+
+Router trained on the same 270 clean windows but with **oracle-expert labels** (argmin future MSE expert per clean window, per the literal task-sheet reading) instead of family labels. Under this supervision every method collapses to near/ below chance on the balanced OOD sets — the oracle-expert label is a noisy target on clean primitives (family vs oracle agree only ~64%), so this variant does **not** support compositional transfer and the family-label protocol (which reproduces the paper's E4 numbers exactly) is retained as the primary evidence.
+
+| model | C_oracle bal3 balacc | C_oracle bal3n balacc |
+|---|---:|---:|
+| qwen3_8b_base | 0.261 / 0.497 | 0.275 / 0.522 |
+| chronos_t5-small | 0.289 / 0.386 | 0.278 / 0.378 |
+| chronos_t5-base | 0.269 / 0.356 | 0.256 / 0.344 |
+| chronos_bolt-small | 0.394 / 0.528 | 0.408 / 0.531 |
+| timesfm_2.5-200m | 0.358 / 0.308 | 0.336 / 0.314 |
+| moment-1-large | 0.381 / 0.508 | 0.369 / 0.519 |
+| moirai-1.1-R-small | 0.231 / 0.400 | 0.186 / 0.431 |
 
 ## 5. Per-seed detail (all rows)
 
@@ -310,5 +324,6 @@
 - **Compositional routing (the key test)**: only **Qwen3-8B pretrained** beats its random control by a wide margin (0.833 vs 0.558 bal3). For every TS FM the pretrained router is ≤ its random control (Bolt 0.683 vs 0.675, TimesFM 0.653 vs 0.694, MOMENT 0.631 vs 0.725, Moirai 0.564 vs 0.656). No TS-FM representation reproduces the language-pretrained routing transfer.
 - **Numerical readout**: pretrained helps for Qwen (0.588 vs 0.679), Bolt (0.405 vs 1.049) and TimesFM (0.404 vs 0.895); MOMENT random ≈ pretrained; Moirai random is close to pretrained (0.436 vs 0.394).
 - **Native forecasting**: TS-FM native interfaces (pretrained) give 0.53–0.67 MSE; random-weight native is 5–25× worse (TimesFM random 16.9, Chronos-T5-base random 12.4), as expected. MOMENT/Qwen native are not defined under this protocol (documented).
+- **Oracle-expert-label C sanity check**: retraining the C router on oracle-expert (argmin future-MSE) labels of the 270 clean windows collapses every method to ≈0.2–0.5 balanced accuracy (Qwen 0.833→0.23, Bolt 0.683→0.40, TimesFM 0.653→0.51, Moirai 0.564→0.31, MOMENT 0.631→0.37). Family-vs-oracle labels agree only ~64% on clean windows, so oracle-expert supervision is a poor learning signal there; the family-label router (which reproduces the paper's E4 numbers) remains the primary C evidence.
 
 > Caveat: these are diagnostic accessibility/routing numbers on controlled synthetic windows; no OOD test set was used for any model/training selection. See `config.json` for exact checkpoint paths and the Moirai/native caveats.
