@@ -2,7 +2,7 @@
 
 `results/iclr/tsfm_deliver/` — regenerated from `metrics.csv` by `scripts/make_tsfm_deliver_md.py`.
 
-**One-line result (family-label routing protocol, bal3):** the average pretraining gain over the random control is largest for **Qwen3-8B (+27.5 pp)**, followed by Chronos-T5-base/ small (+10.0/+3.6 pp) and Bolt-small (+0.8 pp); TimesFM / MOMENT / Moirai show *negative* mean gains (-4.2 / -9.4 / -9.2 pp). The gain therefore is not exclusive to language pretraining, but Qwen's is by far the largest and the only large one; whether that difference is statistically meaningful is addressed by the paired bootstrap intervals in `audit/paired_bootstrap.json`.
+**One-line result (family-label routing protocol, bal3):** the average pretraining gain over the random control is largest for **Qwen3-8B (+31.1 pp)**, followed by Chronos-T5-base/ small (+11.1/-0.0 pp) and Bolt-small (+2.8 pp); TimesFM / MOMENT / Moirai show *negative* mean gains (-5.0 / -3.1 / -6.4 pp). The gain therefore is not exclusive to language pretraining, but Qwen's is by far the largest and the only large one; whether that difference is statistically meaningful is addressed by the paired bootstrap intervals in `audit/paired_bootstrap.json`.
 
 ## 1. Protocol
 
@@ -42,25 +42,25 @@
 
 | model | A_recog_orig | A_recog_shuf | B MSE | C bal3 balacc | C bal3n balacc | C bal3 macro-F1 | native MSE |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| qwen3_8b_base | 0.981 / 0.900 | 0.640 / 0.530 | 0.588 / 0.679 | 0.833 / 0.558 | 0.831 / 0.578 | 0.831 / 0.504 | n/a / n/a |
-| chronos_t5-small | 0.999 / 0.612 | 0.707 / 0.366 | 0.828 / 1.845 | 0.411 / 0.375 | 0.408 / 0.378 | 0.306 / 0.344 | 0.672 / 9.559 |
-| chronos_t5-base | 1.000 / 0.611 | 0.719 / 0.383 | 1.083 / 1.825 | 0.511 / 0.411 | 0.511 / 0.381 | 0.446 / 0.389 | 0.676 / 12.367 |
-| chronos_bolt-small | 1.000 / 0.940 | 0.370 / 0.226 | 0.405 / 1.049 | 0.683 / 0.675 | 0.683 / 0.683 | 0.682 / 0.684 | 0.528 / 6.994 |
-| timesfm_2.5-200m | 1.000 / 0.969 | 0.557 / 0.204 | 0.403 / 0.895 | 0.653 / 0.694 | 0.653 / 0.692 | 0.597 / 0.686 | 0.601 / 16.887 |
-| moment-1-large | 0.993 / 0.976 | 0.231 / 0.228 | 0.535 / 0.504 | 0.631 / 0.725 | 0.628 / 0.722 | 0.589 / 0.723 | n/a / n/a |
-| moirai-1.1-R-small | 0.997 / 0.990 | 0.461 / 0.187 | 0.394 / 0.435 | 0.564 / 0.656 | 0.550 / 0.656 | 0.521 / 0.639 | 1.471 / 2.274 |
+| qwen3_8b_base | 0.981 / 0.919 | 0.640 / 0.647 | 0.588 / 0.625 | 0.833 / 0.522 | 0.831 / 0.542 | 0.831 / 0.454 | n/a / n/a |
+| chronos_t5-small | 0.999 / 0.560 | 0.707 / 0.561 | 0.828 / 1.907 | 0.411 / 0.411 | 0.408 / 0.397 | 0.306 / 0.374 | 0.672 / 10.833 |
+| chronos_t5-base | 1.000 / 0.609 | 0.719 / 0.610 | 1.083 / 1.907 | 0.511 / 0.400 | 0.511 / 0.356 | 0.446 / 0.337 | 0.676 / 11.157 |
+| chronos_bolt-small | 1.000 / 0.772 | 0.370 / 0.206 | 0.405 / 1.907 | 0.683 / 0.656 | 0.683 / 0.706 | 0.682 / 0.643 | 0.528 / 2.342 |
+| timesfm_2.5-200m | 1.000 / 0.930 | 0.557 / 0.212 | 0.403 / 0.508 | 0.653 / 0.703 | 0.653 / 0.722 | 0.597 / 0.707 | 0.601 / 2.486 |
+| moment-1-large | 0.993 / 0.944 | 0.231 / 0.196 | 0.535 / 0.652 | 0.631 / 0.661 | 0.628 / 0.650 | 0.589 / 0.666 | n/a / n/a |
+| moirai-1.1-R-small | 0.997 / 0.963 | 0.461 / 0.198 | 0.394 / 0.451 | 0.564 / 0.628 | 0.550 / 0.617 | 0.521 / 0.621 | 1.471 / 2.260 |
 
 ### 4.1 C-routing per-class recall (bal3, family-label protocol, mean over seeds, pretrained | random)
 
 | model | recall_trend | recall_periodic | recall_local |
 |---|---:|---:|---:|
-| qwen3_8b_base | 0.708 / 0.667 | 0.800 / 0.133 | 0.992 / 0.875 |
-| chronos_t5-small | 0.217 / 0.150 | 0.025 / 0.317 | 0.992 / 0.658 |
-| chronos_t5-base | 0.508 / 0.225 | 0.025 / 0.350 | 1.000 / 0.658 |
-| chronos_bolt-small | 0.600 / 0.675 | 0.458 / 0.617 | 0.992 / 0.733 |
-| timesfm_2.5-200m | 0.775 / 0.775 | 0.183 / 0.483 | 1.000 / 0.825 |
-| moment-1-large | 0.258 / 0.767 | 0.642 / 0.475 | 0.992 / 0.933 |
-| moirai-1.1-R-small | 0.267 / 0.633 | 0.425 / 0.408 | 1.000 / 0.925 |
+| qwen3_8b_base | 0.708 / 0.608 | 0.800 / 0.067 | 0.992 / 0.892 |
+| chronos_t5-small | 0.217 / 0.475 | 0.025 / 0.117 | 0.992 / 0.642 |
+| chronos_t5-base | 0.508 / 0.383 | 0.025 / 0.050 | 1.000 / 0.767 |
+| chronos_bolt-small | 0.600 / 0.517 | 0.458 / 0.942 | 0.992 / 0.508 |
+| timesfm_2.5-200m | 0.775 / 0.717 | 0.183 / 0.683 | 1.000 / 0.708 |
+| moment-1-large | 0.258 / 0.725 | 0.642 / 0.467 | 0.992 / 0.792 |
+| moirai-1.1-R-small | 0.267 / 0.542 | 0.425 / 0.492 | 1.000 / 0.850 |
 
 ### 4.2 Supervision-target sensitivity: oracle-expert training labels (`C_routing_oracle`, mean over seeds, pretrained | random)
 
@@ -68,13 +68,13 @@ Same 270 clean windows and same two OOD test sets as §4, but the router is trai
 
 | model | C_oracle bal3 balacc | C_oracle bal3n balacc |
 |---|---:|---:|
-| qwen3_8b_base | 0.261 / 0.497 | 0.275 / 0.522 |
-| chronos_t5-small | 0.289 / 0.386 | 0.278 / 0.378 |
-| chronos_t5-base | 0.269 / 0.356 | 0.256 / 0.344 |
-| chronos_bolt-small | 0.394 / 0.528 | 0.408 / 0.531 |
-| timesfm_2.5-200m | 0.358 / 0.308 | 0.336 / 0.314 |
-| moment-1-large | 0.381 / 0.508 | 0.369 / 0.519 |
-| moirai-1.1-R-small | 0.231 / 0.400 | 0.186 / 0.431 |
+| qwen3_8b_base | 0.261 / 0.456 | 0.275 / 0.467 |
+| chronos_t5-small | 0.289 / 0.344 | 0.278 / 0.358 |
+| chronos_t5-base | 0.269 / 0.361 | 0.256 / 0.350 |
+| chronos_bolt-small | 0.394 / 0.344 | 0.408 / 0.325 |
+| timesfm_2.5-200m | 0.358 / 0.333 | 0.336 / 0.369 |
+| moment-1-large | 0.381 / 0.450 | 0.369 / 0.461 |
+| moirai-1.1-R-small | 0.231 / 0.386 | 0.186 / 0.392 |
 
 Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the balanced OOD sets. On the clean training windows themselves, family and oracle-expert labels agree only ~64% (see `audit/clean270_label_crosstab.json`), i.e. the two targets are genuinely different; which target is the intended one must follow the original experiment definition (§7), not whichever gives better numbers.
 
@@ -97,21 +97,21 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | qwen3_8b_base | pretrained | 27 | B_readout | synth5 | 300 | - | | | | | | 0.5269 | 65552 |
 | qwen3_8b_base | pretrained | 27 | C_routing | bal3 | 120 | | 0.8 | 0.7972 | 0.675 | 0.75 | 0.975 | 0.7656 | |
 | qwen3_8b_base | pretrained | 27 | C_routing | bal3n | 120 | | 0.8083 | 0.8044 | 0.675 | 0.75 | 1.0 | 0.5772 | |
-| qwen3_8b_base | random | 7 | A_recog_orig | synth5 | 300 | 0.89 | | | | | | - | - |
-| qwen3_8b_base | random | 7 | A_recog_shuf | synth5 | 300 | 0.5167 | | | | | | - | - |
-| qwen3_8b_base | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.641 | 65552 |
-| qwen3_8b_base | random | 7 | C_routing | bal3 | 120 | | 0.5917 | 0.5526 | 0.675 | 0.2 | 0.9 | 1.3352 | |
-| qwen3_8b_base | random | 7 | C_routing | bal3n | 120 | | 0.6 | 0.561 | 0.675 | 0.2 | 0.925 | 1.4112 | |
-| qwen3_8b_base | random | 17 | A_recog_orig | synth5 | 300 | 0.9133 | | | | | | - | - |
-| qwen3_8b_base | random | 17 | A_recog_shuf | synth5 | 300 | 0.5167 | | | | | | - | - |
-| qwen3_8b_base | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.7711 | 65552 |
-| qwen3_8b_base | random | 17 | C_routing | bal3 | 120 | | 0.5417 | 0.4906 | 0.625 | 0.125 | 0.875 | 1.2843 | |
-| qwen3_8b_base | random | 17 | C_routing | bal3n | 120 | | 0.5667 | 0.5082 | 0.625 | 0.125 | 0.95 | 1.2691 | |
-| qwen3_8b_base | random | 27 | A_recog_orig | synth5 | 300 | 0.8967 | | | | | | - | - |
-| qwen3_8b_base | random | 27 | A_recog_shuf | synth5 | 300 | 0.5567 | | | | | | - | - |
-| qwen3_8b_base | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.6258 | 65552 |
-| qwen3_8b_base | random | 27 | C_routing | bal3 | 120 | | 0.5417 | 0.4689 | 0.7 | 0.075 | 0.85 | 1.2913 | |
-| qwen3_8b_base | random | 27 | C_routing | bal3n | 120 | | 0.5667 | 0.4906 | 0.7 | 0.075 | 0.925 | 0.9864 | |
+| qwen3_8b_base | random | 7 | A_recog_orig | synth5 | 300 | 0.92 | | | | | | - | - |
+| qwen3_8b_base | random | 7 | A_recog_shuf | synth5 | 300 | 0.6533 | | | | | | - | - |
+| qwen3_8b_base | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.5734 | 65552 |
+| qwen3_8b_base | random | 7 | C_routing | bal3 | 120 | | 0.55 | 0.4766 | 0.675 | 0.075 | 0.9 | 1.2662 | |
+| qwen3_8b_base | random | 7 | C_routing | bal3n | 120 | | 0.575 | 0.4947 | 0.675 | 0.075 | 0.975 | 1.2617 | |
+| qwen3_8b_base | random | 17 | A_recog_orig | synth5 | 300 | 0.9367 | | | | | | - | - |
+| qwen3_8b_base | random | 17 | A_recog_shuf | synth5 | 300 | 0.6367 | | | | | | - | - |
+| qwen3_8b_base | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.6751 | 65552 |
+| qwen3_8b_base | random | 17 | C_routing | bal3 | 120 | | 0.4583 | 0.3903 | 0.55 | 0.0 | 0.825 | 1.6572 | |
+| qwen3_8b_base | random | 17 | C_routing | bal3n | 120 | | 0.5083 | 0.4192 | 0.55 | 0.0 | 0.975 | 1.5901 | |
+| qwen3_8b_base | random | 27 | A_recog_orig | synth5 | 300 | 0.9 | | | | | | - | - |
+| qwen3_8b_base | random | 27 | A_recog_shuf | synth5 | 300 | 0.65 | | | | | | - | - |
+| qwen3_8b_base | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.6275 | 65552 |
+| qwen3_8b_base | random | 27 | C_routing | bal3 | 120 | | 0.5583 | 0.4952 | 0.6 | 0.125 | 0.95 | 1.262 | |
+| qwen3_8b_base | random | 27 | C_routing | bal3n | 120 | | 0.5417 | 0.4844 | 0.6 | 0.125 | 0.9 | 1.1036 | |
 | chronos_t5-small | pretrained | 7 | A_recog_orig | synth5 | 300 | 1.0 | | | | | | - | - |
 | chronos_t5-small | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.7067 | | | | | | - | - |
 | chronos_t5-small | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 0.8368 | 8208 |
@@ -130,24 +130,24 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | chronos_t5-small | pretrained | 27 | C_routing | bal3 | 120 | | 0.4167 | 0.3063 | 0.25 | 0.0 | 1.0 | 1.6661 | |
 | chronos_t5-small | pretrained | 27 | C_routing | bal3n | 120 | | 0.4167 | 0.3063 | 0.25 | 0.0 | 1.0 | 1.492 | |
 | chronos_t5-small | pretrained | 27 | native_forecast | synth5 | 300 | | | | | | | 0.5869 | |
-| chronos_t5-small | random | 7 | A_recog_orig | synth5 | 300 | 0.6067 | | | | | | - | - |
-| chronos_t5-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.3467 | | | | | | - | - |
-| chronos_t5-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.8901 | 8208 |
-| chronos_t5-small | random | 7 | C_routing | bal3 | 120 | | 0.4167 | 0.3911 | 0.175 | 0.4 | 0.675 | 1.7473 | |
-| chronos_t5-small | random | 7 | C_routing | bal3n | 120 | | 0.4083 | 0.3839 | 0.175 | 0.4 | 0.65 | 1.8264 | |
-| chronos_t5-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 12.6102 | |
-| chronos_t5-small | random | 17 | A_recog_orig | synth5 | 300 | 0.5767 | | | | | | - | - |
-| chronos_t5-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.3667 | | | | | | - | - |
-| chronos_t5-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.9096 | 8208 |
-| chronos_t5-small | random | 17 | C_routing | bal3 | 120 | | 0.3583 | 0.3369 | 0.175 | 0.3 | 0.6 | 1.7692 | |
-| chronos_t5-small | random | 17 | C_routing | bal3n | 120 | | 0.35 | 0.3306 | 0.175 | 0.3 | 0.575 | 1.8037 | |
-| chronos_t5-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 7.8481 | |
-| chronos_t5-small | random | 27 | A_recog_orig | synth5 | 300 | 0.6533 | | | | | | - | - |
-| chronos_t5-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.3833 | | | | | | - | - |
-| chronos_t5-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 1.7342 | 8208 |
-| chronos_t5-small | random | 27 | C_routing | bal3 | 120 | | 0.35 | 0.3036 | 0.1 | 0.25 | 0.7 | 1.9869 | |
-| chronos_t5-small | random | 27 | C_routing | bal3n | 120 | | 0.375 | 0.3199 | 0.1 | 0.25 | 0.775 | 1.7883 | |
-| chronos_t5-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 8.2179 | |
+| chronos_t5-small | random | 7 | A_recog_orig | synth5 | 300 | 0.5433 | | | | | | - | - |
+| chronos_t5-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.5467 | | | | | | - | - |
+| chronos_t5-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.9388 | 8208 |
+| chronos_t5-small | random | 7 | C_routing | bal3 | 120 | | 0.375 | 0.3314 | 0.425 | 0.075 | 0.625 | 1.7606 | |
+| chronos_t5-small | random | 7 | C_routing | bal3n | 120 | | 0.425 | 0.3698 | 0.425 | 0.075 | 0.775 | 1.8355 | |
+| chronos_t5-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 11.2144 | |
+| chronos_t5-small | random | 17 | A_recog_orig | synth5 | 300 | 0.5667 | | | | | | - | - |
+| chronos_t5-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.5667 | | | | | | - | - |
+| chronos_t5-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.9685 | 8208 |
+| chronos_t5-small | random | 17 | C_routing | bal3 | 120 | | 0.4167 | 0.3832 | 0.55 | 0.125 | 0.575 | 1.5797 | |
+| chronos_t5-small | random | 17 | C_routing | bal3n | 120 | | 0.3583 | 0.333 | 0.55 | 0.125 | 0.4 | 1.5653 | |
+| chronos_t5-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 10.4324 | |
+| chronos_t5-small | random | 27 | A_recog_orig | synth5 | 300 | 0.57 | | | | | | - | - |
+| chronos_t5-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.57 | | | | | | - | - |
+| chronos_t5-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 1.8131 | 8208 |
+| chronos_t5-small | random | 27 | C_routing | bal3 | 120 | | 0.4417 | 0.406 | 0.45 | 0.15 | 0.725 | 1.6816 | |
+| chronos_t5-small | random | 27 | C_routing | bal3n | 120 | | 0.4083 | 0.3807 | 0.45 | 0.15 | 0.625 | 1.6221 | |
+| chronos_t5-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 10.8531 | |
 | chronos_t5-base | pretrained | 7 | A_recog_orig | synth5 | 300 | 1.0 | | | | | | - | - |
 | chronos_t5-base | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.7267 | | | | | | - | - |
 | chronos_t5-base | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 1.0824 | 12304 |
@@ -166,24 +166,24 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | chronos_t5-base | pretrained | 27 | C_routing | bal3 | 120 | | 0.5 | 0.4263 | 0.475 | 0.025 | 1.0 | 1.0478 | |
 | chronos_t5-base | pretrained | 27 | C_routing | bal3n | 120 | | 0.5 | 0.4263 | 0.475 | 0.025 | 1.0 | 0.8737 | |
 | chronos_t5-base | pretrained | 27 | native_forecast | synth5 | 300 | | | | | | | 0.6005 | |
-| chronos_t5-base | random | 7 | A_recog_orig | synth5 | 300 | 0.59 | | | | | | - | - |
-| chronos_t5-base | random | 7 | A_recog_shuf | synth5 | 300 | 0.3533 | | | | | | - | - |
-| chronos_t5-base | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.8543 | 12304 |
-| chronos_t5-base | random | 7 | C_routing | bal3 | 120 | | 0.4333 | 0.4223 | 0.275 | 0.4 | 0.625 | 1.757 | |
-| chronos_t5-base | random | 7 | C_routing | bal3n | 120 | | 0.3917 | 0.3881 | 0.275 | 0.4 | 0.5 | 2.0405 | |
-| chronos_t5-base | random | 7 | native_forecast | synth5 | 300 | | | | | | | 12.8554 | |
-| chronos_t5-base | random | 17 | A_recog_orig | synth5 | 300 | 0.6267 | | | | | | - | - |
-| chronos_t5-base | random | 17 | A_recog_shuf | synth5 | 300 | 0.42 | | | | | | - | - |
-| chronos_t5-base | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.9 | 12304 |
-| chronos_t5-base | random | 17 | C_routing | bal3 | 120 | | 0.3917 | 0.3759 | 0.275 | 0.275 | 0.625 | 1.6646 | |
-| chronos_t5-base | random | 17 | C_routing | bal3n | 120 | | 0.3667 | 0.3563 | 0.275 | 0.275 | 0.55 | 1.7002 | |
-| chronos_t5-base | random | 17 | native_forecast | synth5 | 300 | | | | | | | 12.8518 | |
-| chronos_t5-base | random | 27 | A_recog_orig | synth5 | 300 | 0.6167 | | | | | | - | - |
-| chronos_t5-base | random | 27 | A_recog_shuf | synth5 | 300 | 0.3767 | | | | | | - | - |
-| chronos_t5-base | random | 27 | B_readout | synth5 | 300 | - | | | | | | 1.7205 | 12304 |
-| chronos_t5-base | random | 27 | C_routing | bal3 | 120 | | 0.4083 | 0.3696 | 0.125 | 0.375 | 0.725 | 1.7622 | |
-| chronos_t5-base | random | 27 | C_routing | bal3n | 120 | | 0.3833 | 0.3507 | 0.125 | 0.375 | 0.65 | 1.6116 | |
-| chronos_t5-base | random | 27 | native_forecast | synth5 | 300 | | | | | | | 11.3938 | |
+| chronos_t5-base | random | 7 | A_recog_orig | synth5 | 300 | 0.6 | | | | | | - | - |
+| chronos_t5-base | random | 7 | A_recog_shuf | synth5 | 300 | 0.6 | | | | | | - | - |
+| chronos_t5-base | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.9388 | 12304 |
+| chronos_t5-base | random | 7 | C_routing | bal3 | 120 | | 0.3583 | 0.2892 | 0.3 | 0.025 | 0.75 | 1.8816 | |
+| chronos_t5-base | random | 7 | C_routing | bal3n | 120 | | 0.3 | 0.249 | 0.3 | 0.025 | 0.575 | 2.1405 | |
+| chronos_t5-base | random | 7 | native_forecast | synth5 | 300 | | | | | | | 10.8039 | |
+| chronos_t5-base | random | 17 | A_recog_orig | synth5 | 300 | 0.5767 | | | | | | - | - |
+| chronos_t5-base | random | 17 | A_recog_shuf | synth5 | 300 | 0.58 | | | | | | - | - |
+| chronos_t5-base | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.9685 | 12304 |
+| chronos_t5-base | random | 17 | C_routing | bal3 | 120 | | 0.4417 | 0.3911 | 0.425 | 0.1 | 0.8 | 1.8113 | |
+| chronos_t5-base | random | 17 | C_routing | bal3n | 120 | | 0.4 | 0.3604 | 0.425 | 0.1 | 0.675 | 1.7591 | |
+| chronos_t5-base | random | 17 | native_forecast | synth5 | 300 | | | | | | | 11.8483 | |
+| chronos_t5-base | random | 27 | A_recog_orig | synth5 | 300 | 0.65 | | | | | | - | - |
+| chronos_t5-base | random | 27 | A_recog_shuf | synth5 | 300 | 0.65 | | | | | | - | - |
+| chronos_t5-base | random | 27 | B_readout | synth5 | 300 | - | | | | | | 1.8131 | 12304 |
+| chronos_t5-base | random | 27 | C_routing | bal3 | 120 | | 0.4 | 0.3304 | 0.425 | 0.025 | 0.75 | 1.8719 | |
+| chronos_t5-base | random | 27 | C_routing | bal3n | 120 | | 0.3667 | 0.3058 | 0.425 | 0.025 | 0.65 | 1.7285 | |
+| chronos_t5-base | random | 27 | native_forecast | synth5 | 300 | | | | | | | 10.8192 | |
 | chronos_bolt-small | pretrained | 7 | A_recog_orig | synth5 | 300 | 1.0 | | | | | | - | - |
 | chronos_bolt-small | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.3833 | | | | | | - | - |
 | chronos_bolt-small | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 0.3755 | 8208 |
@@ -202,24 +202,24 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | chronos_bolt-small | pretrained | 27 | C_routing | bal3 | 120 | | 0.675 | 0.6745 | 0.55 | 0.475 | 1.0 | 0.8069 | |
 | chronos_bolt-small | pretrained | 27 | C_routing | bal3n | 120 | | 0.6667 | 0.6682 | 0.55 | 0.475 | 0.975 | 0.6328 | |
 | chronos_bolt-small | pretrained | 27 | native_forecast | synth5 | 300 | | | | | | | 0.5054 | |
-| chronos_bolt-small | random | 7 | A_recog_orig | synth5 | 300 | 0.9367 | | | | | | - | - |
-| chronos_bolt-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.25 | | | | | | - | - |
-| chronos_bolt-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.0899 | 8208 |
-| chronos_bolt-small | random | 7 | C_routing | bal3 | 120 | | 0.8 | 0.8042 | 0.75 | 0.825 | 0.825 | 0.7831 | |
-| chronos_bolt-small | random | 7 | C_routing | bal3n | 120 | | 0.775 | 0.7806 | 0.75 | 0.825 | 0.75 | 0.9342 | |
-| chronos_bolt-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 4.5597 | |
-| chronos_bolt-small | random | 17 | A_recog_orig | synth5 | 300 | 0.9533 | | | | | | - | - |
-| chronos_bolt-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.19 | | | | | | - | - |
-| chronos_bolt-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.0838 | 8208 |
-| chronos_bolt-small | random | 17 | C_routing | bal3 | 120 | | 0.675 | 0.6849 | 0.6 | 0.6 | 0.825 | 0.7679 | |
-| chronos_bolt-small | random | 17 | C_routing | bal3n | 120 | | 0.6833 | 0.6918 | 0.6 | 0.6 | 0.85 | 0.7813 | |
-| chronos_bolt-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 9.7247 | |
-| chronos_bolt-small | random | 27 | A_recog_orig | synth5 | 300 | 0.93 | | | | | | - | - |
-| chronos_bolt-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.2367 | | | | | | - | - |
-| chronos_bolt-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.9724 | 8208 |
-| chronos_bolt-small | random | 27 | C_routing | bal3 | 120 | | 0.55 | 0.5619 | 0.675 | 0.425 | 0.55 | 1.0005 | |
-| chronos_bolt-small | random | 27 | C_routing | bal3n | 120 | | 0.5917 | 0.6042 | 0.675 | 0.425 | 0.675 | 0.7312 | |
-| chronos_bolt-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 6.6967 | |
+| chronos_bolt-small | random | 7 | A_recog_orig | synth5 | 300 | 0.7767 | | | | | | - | - |
+| chronos_bolt-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.2533 | | | | | | - | - |
+| chronos_bolt-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 1.9384 | 8208 |
+| chronos_bolt-small | random | 7 | C_routing | bal3 | 120 | | 0.6417 | 0.6324 | 0.625 | 0.875 | 0.425 | 1.1089 | |
+| chronos_bolt-small | random | 7 | C_routing | bal3n | 120 | | 0.6417 | 0.6324 | 0.625 | 0.875 | 0.425 | 1.3389 | |
+| chronos_bolt-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 2.3576 | |
+| chronos_bolt-small | random | 17 | A_recog_orig | synth5 | 300 | 0.7467 | | | | | | - | - |
+| chronos_bolt-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.16 | | | | | | - | - |
+| chronos_bolt-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.9683 | 8208 |
+| chronos_bolt-small | random | 17 | C_routing | bal3 | 120 | | 0.7083 | 0.6985 | 0.55 | 0.975 | 0.6 | 0.9602 | |
+| chronos_bolt-small | random | 17 | C_routing | bal3n | 120 | | 0.7833 | 0.7752 | 0.55 | 0.975 | 0.825 | 0.8282 | |
+| chronos_bolt-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 2.3567 | |
+| chronos_bolt-small | random | 27 | A_recog_orig | synth5 | 300 | 0.7933 | | | | | | - | - |
+| chronos_bolt-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.2033 | | | | | | - | - |
+| chronos_bolt-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 1.8129 | 8208 |
+| chronos_bolt-small | random | 27 | C_routing | bal3 | 120 | | 0.6167 | 0.5967 | 0.375 | 0.975 | 0.5 | 1.0489 | |
+| chronos_bolt-small | random | 27 | C_routing | bal3n | 120 | | 0.6917 | 0.6727 | 0.375 | 0.975 | 0.725 | 0.842 | |
+| chronos_bolt-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 2.3118 | |
 | timesfm_2.5-200m | pretrained | 7 | A_recog_orig | synth5 | 300 | 1.0 | | | | | | - | - |
 | timesfm_2.5-200m | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.5867 | | | | | | - | - |
 | timesfm_2.5-200m | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 0.3955 | 20496 |
@@ -238,24 +238,24 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | timesfm_2.5-200m | pretrained | 27 | C_routing | bal3 | 120 | | 0.65 | 0.6056 | 0.725 | 0.225 | 1.0 | 1.0282 | |
 | timesfm_2.5-200m | pretrained | 27 | C_routing | bal3n | 120 | | 0.65 | 0.6056 | 0.725 | 0.225 | 1.0 | 0.8541 | |
 | timesfm_2.5-200m | pretrained | 27 | native_forecast | synth5 | 300 | | | | | | | 0.5673 | |
-| timesfm_2.5-200m | random | 7 | A_recog_orig | synth5 | 300 | 0.98 | | | | | | - | - |
-| timesfm_2.5-200m | random | 7 | A_recog_shuf | synth5 | 300 | 0.21 | | | | | | - | - |
-| timesfm_2.5-200m | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.8935 | 20496 |
-| timesfm_2.5-200m | random | 7 | C_routing | bal3 | 120 | | 0.7083 | 0.7092 | 0.8 | 0.475 | 0.85 | 0.7634 | |
-| timesfm_2.5-200m | random | 7 | C_routing | bal3n | 120 | | 0.7167 | 0.7165 | 0.8 | 0.475 | 0.875 | 0.844 | |
-| timesfm_2.5-200m | random | 7 | native_forecast | synth5 | 300 | | | | | | | 15.6801 | |
-| timesfm_2.5-200m | random | 17 | A_recog_orig | synth5 | 300 | 0.9833 | | | | | | - | - |
-| timesfm_2.5-200m | random | 17 | A_recog_shuf | synth5 | 300 | 0.2067 | | | | | | - | - |
-| timesfm_2.5-200m | random | 17 | B_readout | synth5 | 300 | - | | | | | | 1.0005 | 20496 |
-| timesfm_2.5-200m | random | 17 | C_routing | bal3 | 120 | | 0.8083 | 0.8074 | 0.675 | 0.825 | 0.925 | 0.8626 | |
-| timesfm_2.5-200m | random | 17 | C_routing | bal3n | 120 | | 0.775 | 0.7753 | 0.675 | 0.825 | 0.825 | 0.8109 | |
-| timesfm_2.5-200m | random | 17 | native_forecast | synth5 | 300 | | | | | | | 19.4683 | |
-| timesfm_2.5-200m | random | 27 | A_recog_orig | synth5 | 300 | 0.9433 | | | | | | - | - |
-| timesfm_2.5-200m | random | 27 | A_recog_shuf | synth5 | 300 | 0.1967 | | | | | | - | - |
-| timesfm_2.5-200m | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.7916 | 20496 |
-| timesfm_2.5-200m | random | 27 | C_routing | bal3 | 120 | | 0.5667 | 0.5413 | 0.85 | 0.15 | 0.7 | 1.044 | |
-| timesfm_2.5-200m | random | 27 | C_routing | bal3n | 120 | | 0.5833 | 0.5571 | 0.85 | 0.15 | 0.75 | 0.6951 | |
-| timesfm_2.5-200m | random | 27 | native_forecast | synth5 | 300 | | | | | | | 15.5134 | |
+| timesfm_2.5-200m | random | 7 | A_recog_orig | synth5 | 300 | 0.9367 | | | | | | - | - |
+| timesfm_2.5-200m | random | 7 | A_recog_shuf | synth5 | 300 | 0.22 | | | | | | - | - |
+| timesfm_2.5-200m | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.4942 | 20496 |
+| timesfm_2.5-200m | random | 7 | C_routing | bal3 | 120 | | 0.6417 | 0.6448 | 0.825 | 0.45 | 0.65 | 0.8721 | |
+| timesfm_2.5-200m | random | 7 | C_routing | bal3n | 120 | | 0.7 | 0.6996 | 0.825 | 0.45 | 0.825 | 0.8259 | |
+| timesfm_2.5-200m | random | 7 | native_forecast | synth5 | 300 | | | | | | | 2.6314 | |
+| timesfm_2.5-200m | random | 17 | A_recog_orig | synth5 | 300 | 0.94 | | | | | | - | - |
+| timesfm_2.5-200m | random | 17 | A_recog_shuf | synth5 | 300 | 0.2267 | | | | | | - | - |
+| timesfm_2.5-200m | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.5899 | 20496 |
+| timesfm_2.5-200m | random | 17 | C_routing | bal3 | 120 | | 0.8 | 0.7991 | 0.6 | 1.0 | 0.8 | 0.8278 | |
+| timesfm_2.5-200m | random | 17 | C_routing | bal3n | 120 | | 0.775 | 0.7779 | 0.6 | 1.0 | 0.725 | 0.8637 | |
+| timesfm_2.5-200m | random | 17 | native_forecast | synth5 | 300 | | | | | | | 2.4842 | |
+| timesfm_2.5-200m | random | 27 | A_recog_orig | synth5 | 300 | 0.9133 | | | | | | - | - |
+| timesfm_2.5-200m | random | 27 | A_recog_shuf | synth5 | 300 | 0.19 | | | | | | - | - |
+| timesfm_2.5-200m | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.4407 | 20496 |
+| timesfm_2.5-200m | random | 27 | C_routing | bal3 | 120 | | 0.6667 | 0.6762 | 0.725 | 0.6 | 0.675 | 0.8861 | |
+| timesfm_2.5-200m | random | 27 | C_routing | bal3n | 120 | | 0.6917 | 0.7005 | 0.725 | 0.6 | 0.75 | 0.6244 | |
+| timesfm_2.5-200m | random | 27 | native_forecast | synth5 | 300 | | | | | | | 2.3424 | |
 | moment-1-large | pretrained | 7 | A_recog_orig | synth5 | 300 | 0.99 | | | | | | - | - |
 | moment-1-large | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.2233 | | | | | | - | - |
 | moment-1-large | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 0.5368 | 16400 |
@@ -271,21 +271,21 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | moment-1-large | pretrained | 27 | B_readout | synth5 | 300 | - | | | | | | 0.4803 | 16400 |
 | moment-1-large | pretrained | 27 | C_routing | bal3 | 120 | | 0.6667 | 0.605 | 0.175 | 0.825 | 1.0 | 1.4545 | |
 | moment-1-large | pretrained | 27 | C_routing | bal3n | 120 | | 0.65 | 0.592 | 0.175 | 0.825 | 0.95 | 1.3278 | |
-| moment-1-large | random | 7 | A_recog_orig | synth5 | 300 | 0.9867 | | | | | | - | - |
-| moment-1-large | random | 7 | A_recog_shuf | synth5 | 300 | 0.22 | | | | | | - | - |
-| moment-1-large | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.5114 | 16400 |
-| moment-1-large | random | 7 | C_routing | bal3 | 120 | | 0.7583 | 0.7522 | 0.825 | 0.5 | 0.95 | 0.7977 | |
-| moment-1-large | random | 7 | C_routing | bal3n | 120 | | 0.7333 | 0.73 | 0.825 | 0.5 | 0.875 | 0.8189 | |
-| moment-1-large | random | 17 | A_recog_orig | synth5 | 300 | 0.9833 | | | | | | - | - |
-| moment-1-large | random | 17 | A_recog_shuf | synth5 | 300 | 0.2367 | | | | | | - | - |
-| moment-1-large | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.5795 | 16400 |
-| moment-1-large | random | 17 | C_routing | bal3 | 120 | | 0.7167 | 0.7138 | 0.75 | 0.45 | 0.95 | 0.6857 | |
-| moment-1-large | random | 17 | C_routing | bal3n | 120 | | 0.725 | 0.7204 | 0.75 | 0.45 | 0.975 | 0.6738 | |
-| moment-1-large | random | 27 | A_recog_orig | synth5 | 300 | 0.9567 | | | | | | - | - |
-| moment-1-large | random | 27 | A_recog_shuf | synth5 | 300 | 0.2267 | | | | | | - | - |
-| moment-1-large | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.4214 | 16400 |
-| moment-1-large | random | 27 | C_routing | bal3 | 120 | | 0.7 | 0.7024 | 0.725 | 0.475 | 0.9 | 0.794 | |
-| moment-1-large | random | 27 | C_routing | bal3n | 120 | | 0.7083 | 0.7089 | 0.725 | 0.475 | 0.925 | 0.587 | |
+| moment-1-large | random | 7 | A_recog_orig | synth5 | 300 | 0.9533 | | | | | | - | - |
+| moment-1-large | random | 7 | A_recog_shuf | synth5 | 300 | 0.1867 | | | | | | - | - |
+| moment-1-large | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.6611 | 16400 |
+| moment-1-large | random | 7 | C_routing | bal3 | 120 | | 0.7167 | 0.7221 | 0.8 | 0.575 | 0.775 | 0.8224 | |
+| moment-1-large | random | 7 | C_routing | bal3n | 120 | | 0.7 | 0.7063 | 0.8 | 0.575 | 0.725 | 0.9291 | |
+| moment-1-large | random | 17 | A_recog_orig | synth5 | 300 | 0.9633 | | | | | | - | - |
+| moment-1-large | random | 17 | A_recog_shuf | synth5 | 300 | 0.21 | | | | | | - | - |
+| moment-1-large | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.7304 | 16400 |
+| moment-1-large | random | 17 | C_routing | bal3 | 120 | | 0.7 | 0.7046 | 0.675 | 0.525 | 0.9 | 0.7027 | |
+| moment-1-large | random | 17 | C_routing | bal3n | 120 | | 0.6833 | 0.6903 | 0.675 | 0.525 | 0.85 | 0.7832 | |
+| moment-1-large | random | 27 | A_recog_orig | synth5 | 300 | 0.9167 | | | | | | - | - |
+| moment-1-large | random | 27 | A_recog_shuf | synth5 | 300 | 0.19 | | | | | | - | - |
+| moment-1-large | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.5642 | 16400 |
+| moment-1-large | random | 27 | C_routing | bal3 | 120 | | 0.5667 | 0.5717 | 0.7 | 0.3 | 0.7 | 0.8931 | |
+| moment-1-large | random | 27 | C_routing | bal3n | 120 | | 0.5667 | 0.5727 | 0.7 | 0.3 | 0.7 | 0.7726 | |
 | moirai-1.1-R-small | pretrained | 7 | A_recog_orig | synth5 | 300 | 0.9967 | | | | | | - | - |
 | moirai-1.1-R-small | pretrained | 7 | A_recog_shuf | synth5 | 300 | 0.4767 | | | | | | - | - |
 | moirai-1.1-R-small | pretrained | 7 | B_readout | synth5 | 300 | - | | | | | | 0.3692 | 6160 |
@@ -304,31 +304,31 @@ Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the
 | moirai-1.1-R-small | pretrained | 27 | C_routing | bal3 | 120 | | 0.4667 | 0.3963 | 0.15 | 0.25 | 1.0 | 1.9816 | |
 | moirai-1.1-R-small | pretrained | 27 | C_routing | bal3n | 120 | | 0.4583 | 0.3911 | 0.15 | 0.25 | 0.975 | 1.8453 | |
 | moirai-1.1-R-small | pretrained | 27 | native_forecast | synth5 | 300 | | | | | | | 1.4183 | |
-| moirai-1.1-R-small | random | 7 | A_recog_orig | synth5 | 300 | 0.9833 | | | | | | - | - |
-| moirai-1.1-R-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.2333 | | | | | | - | - |
-| moirai-1.1-R-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.4363 | 6160 |
-| moirai-1.1-R-small | random | 7 | C_routing | bal3 | 120 | | 0.6583 | 0.6328 | 0.825 | 0.275 | 0.875 | 1.3322 | |
-| moirai-1.1-R-small | random | 7 | C_routing | bal3n | 120 | | 0.65 | 0.6317 | 0.825 | 0.275 | 0.85 | 1.5281 | |
-| moirai-1.1-R-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 2.2283 | |
-| moirai-1.1-R-small | random | 17 | A_recog_orig | synth5 | 300 | 0.9967 | | | | | | - | - |
-| moirai-1.1-R-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.1567 | | | | | | - | - |
-| moirai-1.1-R-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.501 | 6160 |
-| moirai-1.1-R-small | random | 17 | C_routing | bal3 | 120 | | 0.6667 | 0.6574 | 0.575 | 0.475 | 0.95 | 1.1035 | |
-| moirai-1.1-R-small | random | 17 | C_routing | bal3n | 120 | | 0.675 | 0.6637 | 0.575 | 0.475 | 0.975 | 1.1112 | |
-| moirai-1.1-R-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 2.3127 | |
-| moirai-1.1-R-small | random | 27 | A_recog_orig | synth5 | 300 | 0.99 | | | | | | - | - |
-| moirai-1.1-R-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.17 | | | | | | - | - |
-| moirai-1.1-R-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.3691 | 6160 |
-| moirai-1.1-R-small | random | 27 | C_routing | bal3 | 120 | | 0.6417 | 0.6271 | 0.5 | 0.475 | 0.95 | 1.3096 | |
-| moirai-1.1-R-small | random | 27 | C_routing | bal3n | 120 | | 0.6417 | 0.6271 | 0.5 | 0.475 | 0.95 | 1.073 | |
-| moirai-1.1-R-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 2.2817 | |
+| moirai-1.1-R-small | random | 7 | A_recog_orig | synth5 | 300 | 0.97 | | | | | | - | - |
+| moirai-1.1-R-small | random | 7 | A_recog_shuf | synth5 | 300 | 0.2067 | | | | | | - | - |
+| moirai-1.1-R-small | random | 7 | B_readout | synth5 | 300 | - | | | | | | 0.4783 | 6160 |
+| moirai-1.1-R-small | random | 7 | C_routing | bal3 | 120 | | 0.6667 | 0.6624 | 0.7 | 0.45 | 0.85 | 0.9218 | |
+| moirai-1.1-R-small | random | 7 | C_routing | bal3n | 120 | | 0.675 | 0.6688 | 0.7 | 0.45 | 0.875 | 0.9074 | |
+| moirai-1.1-R-small | random | 7 | native_forecast | synth5 | 300 | | | | | | | 2.2618 | |
+| moirai-1.1-R-small | random | 17 | A_recog_orig | synth5 | 300 | 0.9633 | | | | | | - | - |
+| moirai-1.1-R-small | random | 17 | A_recog_shuf | synth5 | 300 | 0.1833 | | | | | | - | - |
+| moirai-1.1-R-small | random | 17 | B_readout | synth5 | 300 | - | | | | | | 0.519 | 6160 |
+| moirai-1.1-R-small | random | 17 | C_routing | bal3 | 120 | | 0.625 | 0.6204 | 0.45 | 0.575 | 0.85 | 1.0188 | |
+| moirai-1.1-R-small | random | 17 | C_routing | bal3n | 120 | | 0.6 | 0.595 | 0.45 | 0.575 | 0.775 | 1.0834 | |
+| moirai-1.1-R-small | random | 17 | native_forecast | synth5 | 300 | | | | | | | 2.3126 | |
+| moirai-1.1-R-small | random | 27 | A_recog_orig | synth5 | 300 | 0.9567 | | | | | | - | - |
+| moirai-1.1-R-small | random | 27 | A_recog_shuf | synth5 | 300 | 0.2033 | | | | | | - | - |
+| moirai-1.1-R-small | random | 27 | B_readout | synth5 | 300 | - | | | | | | 0.3567 | 6160 |
+| moirai-1.1-R-small | random | 27 | C_routing | bal3 | 120 | | 0.5917 | 0.5804 | 0.475 | 0.45 | 0.85 | 1.2742 | |
+| moirai-1.1-R-small | random | 27 | C_routing | bal3n | 120 | | 0.575 | 0.5668 | 0.475 | 0.45 | 0.8 | 1.0346 | |
+| moirai-1.1-R-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 2.2061 | |
 
 ## 6. Observations
 
 - **Recognition is easy for everyone**: pretrained A_recog_orig ≈ 0.98–1.00 for all models; even random weights give ≥0.90 for the patch-based TS FMs (chronos-T5 random ~0.61 is the exception). Clean-family separability alone does **not** indicate transfer.
 - **Order sensitivity varies strongly**: A_recog_shuf drops most for MOMENT (0.993→0.231), Bolt (1.0→0.37), TimesFM (1.0→0.56), Moirai (0.997→0.46); Qwen drops 0.981→0.64.
-- **Compositional routing (family-label protocol, bal3 mean pretraining gain)**: qwen3_8b_base +27.5pp; chronos_t5-base +10.0pp; chronos_t5-small +3.6pp; chronos_bolt-small +0.8pp; timesfm_2.5-200m -4.2pp; moirai-1.1-R-small -9.2pp; moment-1-large -9.4pp. Qwen's gain is the largest; direction/size varies across TS FMs, so one should *not* claim that only language pretraining transfers or that no TS FM does — the per-family deltas and paired intervals in `audit/` are the defensible statements.
-- **Significance (window-level paired bootstrap, 95% CI, pretrained − random, bal3, family-label protocol)**: qwen3_8b_base: BA +0.275 [+0.200, +0.351], MSE -0.594 [-0.820, -0.367]; chronos_t5-small: BA +0.036 [-0.077, +0.137], MSE -0.126 [-0.529, +0.258]; chronos_t5-base: BA +0.100 [-0.007, +0.215], MSE -0.712 [-1.018, -0.407]; chronos_bolt-small: BA +0.008 [-0.152, +0.172], MSE -0.068 [-0.353, +0.084]; timesfm_2.5-200m: BA -0.042 [-0.254, +0.139], MSE +0.150 [-0.227, +0.543]; moment-1-large: BA -0.094 [-0.220, +0.027], MSE +0.775 [+0.451, +1.087]; moirai-1.1-R-small: BA -0.092 [-0.227, +0.017], MSE +0.432 [+0.115, +0.894]. Only Qwen's balanced-accuracy gain and Qwen/Chronos-T5-base routed-MSE gains have CIs excluding 0 (favoring pretrained); MOMENT/Moirai routed-MSE CIs exclude 0 favoring *random*. Full per-seed numbers in `audit/paired_bootstrap.json`.
+- **Compositional routing (family-label protocol, bal3 mean pretraining gain)**: qwen3_8b_base +31.1pp; chronos_t5-base +11.1pp; chronos_bolt-small +2.8pp; chronos_t5-small -0.0pp; moment-1-large -3.1pp; timesfm_2.5-200m -5.0pp; moirai-1.1-R-small -6.4pp. Qwen's gain is the largest; direction/size varies across TS FMs, so one should *not* claim that only language pretraining transfers or that no TS FM does — the per-family deltas and paired intervals in `audit/` are the defensible statements.
+- **Significance (window-level paired bootstrap, 95% CI, pretrained − random, bal3, family-label protocol)**: qwen3_8b_base: BA +0.311 [+0.271, +0.352], MSE -0.685 [-0.797, -0.575]; chronos_t5-small: BA -0.000 [-0.051, +0.052], MSE +0.035 [-0.137, +0.198]; chronos_t5-base: BA +0.111 [+0.058, +0.164], MSE -0.839 [-0.999, -0.681]; chronos_bolt-small: BA +0.028 [-0.021, +0.078], MSE -0.256 [-0.377, -0.156]; timesfm_2.5-200m: BA -0.050 [-0.105, +0.004], MSE +0.178 [+0.039, +0.318]; moment-1-large: BA -0.031 [-0.074, +0.014], MSE +0.728 [+0.573, +0.887]; moirai-1.1-R-small: BA -0.064 [-0.101, -0.025], MSE +0.609 [+0.444, +0.773]. Balanced-accuracy CIs excluding 0: qwen3_8b_base, chronos_t5-base (positive) and moirai-1.1-R-small (negative). Routed-MSE CIs excluding 0: qwen3_8b_base, chronos_t5-base, chronos_bolt-small (pretrained lower) and timesfm_2.5-200m, moment-1-large, moirai-1.1-R-small (random lower). Nominal intervals, fixed 3 seeds, no multiple-comparison correction. Full per-seed numbers in `audit/paired_bootstrap.json`.
 - **Numerical readout**: pretrained helps for Qwen (0.588 vs 0.679), Bolt (0.405 vs 1.049) and TimesFM (0.404 vs 0.895); MOMENT random ≈ pretrained (0.535 vs 0.504); Moirai random is close to pretrained (0.394 vs 0.435).
 - **Native forecasting** (pretrained | random, mean over seeds): Chronos-T5-small 0.672 | 9.56, Chronos-T5-base 0.676 | 12.37, Bolt-small 0.528 | 6.99, TimesFM 0.601 | 16.89, **Moirai 1.471 | 2.274**. MOMENT/Qwen native are not defined under this protocol (documented).
 

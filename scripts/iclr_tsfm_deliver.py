@@ -102,71 +102,111 @@ def recog_metrics3(pred, oracle):
 
 # ---------------------------------------------------------------- extractors
 def make_extractor(name, init, seed, device):
+    """Frozen-representation extractor for one (model, init, seed).
+
+    init == "pretrained": load the released checkpoint.
+    init == "random": construct the SAME architecture from its config with
+    native initializers, seed-controlled, WITHOUT loading any released weights
+    (no pretrained residual; see init_audit/). Custom norms/projections that
+    are initialized to their architectural constants are reported, not treated
+    as pretrained leakage.
+    """
     if name == "qwen3_8b_base":
         sys.path.insert(0, str(REPO))
-        from scripts.run_frozen_probe import _load_model, extract_last_hidden
+        import transformers.modeling_utils as _mu
+        if not isinstance(_mu.ALL_PARALLEL_STYLES, (set, frozenset)):
+            _mu.ALL_PARALLEL_STYLES = frozenset({"tp","block","sharded","pp","sequence","rowwise","colwise","naive","serial","manual","flex","ddp"})
+        from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
         mpath = str(REPO / "models/qwen3-8b-base")
-        model, tok = _load_model(mpath, device, init == "random")
+        tok = AutoTokenizer.from_pretrained(mpath, trust_remote_code=True)
+        if tok.pad_token_id is None:
+            tok.pad_token = tok.eos_token
+        if init == "random":
+            torch.manual_seed(seed)
+            cfg = AutoConfig.from_pretrained(mpath, trust_remote_code=True)
+            model = AutoModelForCausalLM.from_config(cfg, trust_remote_code=True)
+            model = model.to(torch.bfloat16)
+        else:
+            devidx = int(device.split(":")[1]) if ":" in device else 0
+            model = AutoModelForCausalLM.from_pretrained(
+                mpath, trust_remote_code=True, torch_dtype=torch.bfloat16,
+                attn_implementation="sdpa", device_map={"": devidx})
+        model = model.to(device).eval()
+        from scripts.run_frozen_probe import extract_last_hidden
         def embed(ctx, _m=model, _t=tok):
             return extract_last_hidden(_m, _t, ctx, device)
         return embed, 4096, None
+
     if name.startswith("chronos_t5") or name.startswith("chronos_bolt"):
         CH = str(REPO / "third_party/chronos-forecasting/src")
         if CH not in sys.path: sys.path.insert(0, CH)
-        from transformers import AutoConfig, AutoModel
-        from chronos import ChronosConfig, ChronosPipeline, ChronosBoltPipeline
+        from transformers import AutoConfig, AutoModelForSeq2SeqLM
+        from chronos import ChronosConfig, ChronosModel, ChronosPipeline, ChronosBoltPipeline
         tag = name.replace("chronos_", "")
         mpath = f"/public/chenjiahui/SAFER-TS/code/model_cache/amazon__chronos-{tag}"
-        pipe = (ChronosPipeline if name.startswith("chronos_t5") else ChronosBoltPipeline).from_pretrained(mpath)
-        if init == "random":
-            randomize(pipe.model, seed)
-        pipe.model = pipe.model.to(device).eval()
         if name.startswith("chronos_t5"):
+            if init == "random":
+                cfg = AutoConfig.from_pretrained(mpath)
+                cc = ChronosConfig(**cfg.chronos_config)
+                torch.manual_seed(seed)
+                inner = AutoModelForSeq2SeqLM.from_config(cfg)
+                pipe = ChronosPipeline(tokenizer=cc.create_tokenizer(),
+                                       model=ChronosModel(config=cc, model=inner))
+            else:
+                pipe = ChronosPipeline.from_pretrained(mpath)
             def embed(ctx, _p=pipe):
                 out = []
                 with torch.no_grad():
                     for st in range(0, len(ctx), 64):
                         b = torch.from_numpy(ctx[st:st+64]).float()
-                        emb, _ = _p.embed(b)          # (B, L+1, d) incl EOS
+                        emb, _ = _p.embed(b)
                         out.append(emb[:, -1, :].numpy())
                 return np.concatenate(out)
-            # inner HF T5 config holds d_model (ChronosModel wraps the HF model)
             dim = int(pipe.model.model.config.d_model)
-        else:
+        else:  # chronos_bolt
+            from chronos.chronos_bolt import ChronosBoltModelForForecasting
+            if init == "random":
+                cfg = AutoConfig.from_pretrained(mpath)
+                torch.manual_seed(seed)
+                model = ChronosBoltModelForForecasting(cfg)
+                pipe = ChronosBoltPipeline(model=model)
+            else:
+                pipe = ChronosBoltPipeline.from_pretrained(mpath)
             def embed(ctx, _p=pipe):
                 out = []
                 with torch.no_grad():
                     for st in range(0, len(ctx), 64):
                         b = torch.from_numpy(ctx[st:st+64]).float()
-                        emb, _ = _p.embed(b)          # (B, n_patch+1, d) incl [REG]
+                        emb, _ = _p.embed(b)
                         out.append(emb[:, -1, :].numpy())
                 return np.concatenate(out)
-            dim = int(pipe.model.config.d_model)  # T5 config of ChronosBoltModelForForecasting
+            dim = int(pipe.model.config.d_model)
+        pipe.model = pipe.model.to(device).eval()
         def native(ctx, _p=pipe):
+            torch.manual_seed(seed)   # deterministic sampling for reproducible random-native rows
             b = torch.from_numpy(ctx).float()
             outs = []
             with torch.no_grad():
                 for st in range(0, len(b), 16):
                     chunk = b[st:st+16]
                     if name.startswith("chronos_t5"):
-                        fc = _p.predict(chunk, prediction_length=16, num_samples=20)  # (B,20,16)
+                        fc = _p.predict(chunk, prediction_length=16, num_samples=20)
                         fc = fc.median(dim=1).values.numpy()
                     else:
-                        fc = _p.predict(chunk, prediction_length=16)  # (B,9,16)
+                        fc = _p.predict(chunk, prediction_length=16)
                         fc = fc[:, _p.quantiles.index(0.5), :].numpy()
                     outs.append(fc)
             return np.concatenate(outs)
         return embed, dim, native
+
     if name.startswith("timesfm"):
         sys.path.insert(0, '/public/chenjiahui/SAFER-TS/code/baselines_external/timesfm/src')
         from scripts.tsfm_models import TimesFMRep
+        # TimesFMRep(random_init=True) now constructs from config WITHOUT loading weights
         r = TimesFMRep("/public/chenjiahui/SAFER-TS/code/model_cache/google__timesfm-2.5-200m-pytorch/model.safetensors",
                        device, init == "random", seed)
         r.m.device = torch.device(device); r.m = r.m.to(device)
         def native(ctx):
-            # batched GPU native (mirrors forecast_naive/decode for horizon<=128:
-            # num_decode_steps=0 -> single forward, take last patch, first H steps,
-            # point index = decode_index 5). Much faster than per-window CPU decode.
             import math as _m
             p_, o_, q_, aridx_ = r.m.p, r.m.o, r.m.q, r.m.aridx
             util = r.util
@@ -187,17 +227,20 @@ def make_extractor(name, init, seed, device):
                 renormed = util.revin(out_ts, cmu, csig, reverse=True).reshape(B, -1, o_, q_)
             return renormed[:, -1, :16, aridx_].float().cpu().numpy()
         return r.embed, 1280, native
+
     if name.startswith("moment"):
         sys.path.insert(0, '/public/chenjiahui/波数据时序基座大模型.bak_public/moment-main/Inference')
         import json as _json
         from momentfm.models.moment import MOMENT
         wdir = '/public/chenjiahui/波数据时序基座大模型.bak_public/WaveFormer/models/external/moment'
         cfg = _json.load(open(f"{wdir}/config.json")); cfg['d_model'] = cfg['t5_config']['d_model']
-        m = MOMENT(cfg, model_kwargs={})
-        sd = torch.load(f"{wdir}/pytorch_model.bin", map_location="cpu", weights_only=False)
-        m.load_state_dict(sd, strict=False)
         if init == "random":
-            randomize(m, seed)
+            torch.manual_seed(seed)
+            m = MOMENT(cfg, model_kwargs={})          # arch-native init, no pretrained load
+        else:
+            m = MOMENT(cfg, model_kwargs={})
+            sd = torch.load(f"{wdir}/pytorch_model.bin", map_location="cpu", weights_only=False)
+            m.load_state_dict(sd, strict=False)
         m = m.to(device).eval()
         def embed(ctx):
             x = torch.from_numpy(ctx).float().unsqueeze(1).to(device)
@@ -207,22 +250,30 @@ def make_extractor(name, init, seed, device):
                     o = m.embed(x_enc=x[st:st+32]); out.append(o.embeddings.cpu().numpy())
             return np.concatenate(out)
         return embed, cfg['d_model'], None
+
     if name.startswith("moirai"):
         _install_jaxtyping_shim_if_needed()
         _skip_einops_dynamo()
         UNI2TS = "/public/chenjiahui/SAFER-TS/code/baselines_external/uni2ts/src"
         if UNI2TS not in sys.path: sys.path.insert(0, UNI2TS)
         _register_moirai_pkg(UNI2TS)
-        from uni2ts.model.moirai.module import MoiraiModule
-        ckpt = "/public/chenjiahui/SAFER-TS/code/model_cache/Salesforce__moirai-1.1-R-small"
-        mod = MoiraiModule.from_pretrained(ckpt)
+        from uni2ts.model.moirai.module import MoiraiModule, decode_distr_output
+        import json as _json
+        ckpt_dir = "/public/chenjiahui/SAFER-TS/code/model_cache/Salesforce__moirai-1.1-R-small"
+        cfgd = _json.load(open(f"{ckpt_dir}/config.json"))
         if init == "random":
-            randomize(mod, seed)
+            torch.manual_seed(seed)
+            distr = decode_distr_output(cfgd["distr_output"])
+            mod = MoiraiModule(distr_output=distr, d_model=cfgd["d_model"],
+                               num_layers=cfgd["num_layers"], patch_sizes=cfgd["patch_sizes"],
+                               max_seq_len=cfgd["max_seq_len"], attn_dropout_p=cfgd["attn_dropout_p"],
+                               dropout_p=cfgd["dropout_p"], scaling=cfgd["scaling"])
+        else:
+            mod = MoiraiModule.from_pretrained(ckpt_dir)
         mod = mod.to(device).eval()
         p = 16
         max_patch = max(mod.patch_sizes)
         def _ctx_pack(x, device):
-            # x: (B, 64) -> target/obs/time/sample/variate/pred_mask/patch_size
             B, L = x.shape
             np_ = int(math.ceil(L / p))
             xp = torch.zeros(B, np_ * p, device=device)
@@ -249,7 +300,6 @@ def make_extractor(name, init, seed, device):
                 out.append(reprs[:, -1, :].float().cpu().numpy())
             return np.concatenate(out)
         def native(ctx):
-            # native forecast: fixed patch 16 (short-context regime C=64,H=16)
             H = 16; nf = int(math.ceil(H / p)); B = len(ctx)
             outs = []
             for st in range(0, B, 16):
@@ -267,8 +317,8 @@ def make_extractor(name, init, seed, device):
                 obs = torch.nn.functional.pad(om, (0, max_patch - p))
                 with torch.no_grad():
                     distr = mod(target, obs, sid, tid, vid, pm, psz)
-                    samples = distr.sample(torch.Size([50]))       # (50,b,seq,patch)
-                fut = samples[:, :, 4:, :p]                        # (50,b,nf,p)
+                    samples = distr.sample(torch.Size([50]))
+                fut = samples[:, :, 4:, :p]
                 fut = fut.permute(1, 0, 2, 3).reshape(b, 50, nf * p)[:, :, :H]
                 outs.append(fut.median(dim=1).values.cpu().numpy())
             return np.concatenate(outs)
@@ -280,7 +330,7 @@ def lin_readout(Xtr, Ytr, Xte, seed):
     torch.manual_seed(seed)
     net = nn.Linear(Xtr.shape[1], 16)
     Xt = torch.from_numpy(Xtr).float(); Yt = torch.from_numpy(Ytr).float()
-    opt = torch.optim.AdamW(net.parameters(), lr=1e-3)
+    opt = torch.optim.AdamW(net.parameters(), lr=1e-3, weight_decay=0.01)  # explicit; matches executed default
     for _ in range(300):
         opt.zero_grad(); l = nn.functional.mse_loss(net(Xt), Yt); l.backward(); opt.step()
     with torch.no_grad():
@@ -302,7 +352,9 @@ def main():
     ap.add_argument("--device", default="cuda:0")
     ap.add_argument("--out", type=Path, default=Path("results/iclr/tsfm_deliver"))
     ap.add_argument("--only-tasks", default="A,B,C,native")
+    ap.add_argument("--inits", default="pretrained,random")
     a = ap.parse_args()
+    a.inits = [x.strip() for x in a.inits.split(",") if x.strip()]
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "perwindow").mkdir(parents=True, exist_ok=True)
     seeds = [int(x) for x in a.seeds.split(",")]
@@ -328,7 +380,7 @@ def main():
                               ("bal3n", f"results/iclr/e4_balanced3_natural/windows/bal3n_s{seed}.npz")]:
                 if Path(root).is_file():
                     z = np.load(root); bal[tag] = (z["ctx"], z["fut"], z["oracle"])
-            for init in ["pretrained", "random"]:
+            for init in a.inits:
                 rec = {"model": name, "init": init, "seed": seed}
                 try:
                     embed, dim, native = make_extractor(name, init, seed, a.device)
@@ -423,7 +475,7 @@ def main():
                    "kinds": ["trend", "periodic", "local", "mixture", "regime"]},
         "A_recognition": "5-class family probe, softmax full-batch 2000 steps (analysis.linear_probe), "
                          "frozen backbone; shuffled = per-window independent time permutation (seed 100000*s+i)",
-        "B_readout": "linear head H=16 on frozen rep, AdamW lr=1e-3 wd=0, full-batch 300 epochs",
+        "B_readout": "linear head H=16 on frozen rep, AdamW lr=1e-3 weight_decay=0.01, full-batch 300 epochs",
         "C_routing": "router = softmax probe on 270 clean trend/periodic/local windows (family labels), "
                      "test = e4_balanced3 (bal3) and e4_balanced3_natural (bal3n), oracle = argmin expert future MSE",
         "native": "model-native forecasting interface; point prediction = median (chronos 20 samples / bolt 0.5 quantile / timesfm decode_index 5 / moirai 50 samples median)",

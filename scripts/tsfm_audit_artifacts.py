@@ -17,7 +17,7 @@ from data.dynamics import build_labeled_windows
 from models.experts import LocalExpert, PeriodicExpert, TrendExpert
 KINDS=["trend","periodic","local","mixture","regime"]
 EXPERTS=[TrendExpert(),PeriodicExpert(),LocalExpert()]
-OUT=Path("results/iclr/tsfm_deliver"); AUD=OUT/"audit"; AUD.mkdir(parents=True,exist_ok=True)
+OUT=Path(sys.argv[1]) if len(sys.argv)>1 else Path("results/iclr/tsfm_deliver"); AUD=OUT/"audit"; AUD.mkdir(parents=True,exist_ok=True)
 MODELS=["qwen3_8b_base","chronos_t5-small","chronos_t5-base","chronos_bolt-small",
         "timesfm_2.5-200m","moment-1-large","moirai-1.1-R-small"]
 SEEDS=[7,17,27]
@@ -103,23 +103,33 @@ for variant,opre in [("C_routing",False),("C_routing_oracle",True)]:
                 per_seed[str(s)]={"ba_pre":round(ba_pre,4),"ba_rand":round(ba_ran,4),
                                   "mse_pre":round(mse_pre,4),"mse_rand":round(mse_ran,4),
                                   "n":int(len(o))}
-                # bootstrap within this seed (stratified)
                 n=len(o)
+                # (a) minimal-corrected bootstrap: resample WITHIN each seed, compute the
+                #     per-seed delta, average the three seed deltas, collect the average.
+                # (b) original (kept for reference): pool the per-seed deltas (6000) and take quantiles.
+                _cache=[]
+                for s2 in SEEDS:
+                    z2p=load_pw(m,"pretrained",s2,opre); z2r=load_pw(m,"random",s2,opre)
+                    o2=z2p[f"c_{tag}_oracle"]; p2pre=z2p[f"c_{tag}_pred"]; p2ran=z2r[f"c_{tag}_pred"]; e2=z2p[f"c_{tag}_err"]
+                    _cache.append((o2,p2pre,p2ran,e2))
                 for _ in range(NB):
-                    idx=RNG.integers(0,n,n)
-                    bb_pre=balacc(ppre[idx],o[idx]); bb_ran=balacc(pran[idx],o[idx])
-                    mm_pre=float(np.mean(err[idx, ppre[idx]])); mm_ran=float(np.mean(err[idx, pran[idx]]))
-                    deltas_ba.append(bb_pre-bb_ran); deltas_mse.append(mm_pre-mm_ran)
+                    seed_bas=[]; seed_mses=[]
+                    for o2,p2pre,p2ran,e2 in _cache:
+                        n2=len(o2); idx=RNG.integers(0,n2,n2)
+                        seed_bas.append(balacc(p2pre[idx],o2[idx])-balacc(p2ran[idx],o2[idx]))
+                        seed_mses.append(float(np.mean(e2[idx,p2pre[idx]]))-float(np.mean(e2[idx,p2ran[idx]])))
+                    deltas_ba.append(float(np.mean(seed_bas)))
+                    deltas_mse.append(float(np.mean(seed_mses)))
             ba_delta_mean=float(np.mean([per_seed[str(s)]["ba_pre"]-per_seed[str(s)]["ba_rand"] for s in SEEDS]))
             mse_delta_mean=float(np.mean([per_seed[str(s)]["mse_pre"]-per_seed[str(s)]["mse_rand"] for s in SEEDS]))
-            # delta is a mean over seeds of seed-level metrics; percentile over resample distribution
-            lo=np.percentile(deltas_ba,2.5); hi=np.percentile(deltas_ba,97.5)
-            lom=np.percentile(deltas_mse,2.5); him=np.percentile(deltas_mse,97.5)
+            lo,hi=np.percentile(deltas_ba,2.5),np.percentile(deltas_ba,97.5)
+            lom,him=np.percentile(deltas_mse,2.5),np.percentile(deltas_mse,97.5)
             boot[variant][m][tag]={"ba_delta_mean_over_seeds":round(ba_delta_mean,4),
                                    "ba_delta_ci95":[round(lo,4),round(hi,4)],
                                    "mse_delta_mean_over_seeds":round(mse_delta_mean,4),
                                    "mse_delta_ci95":[round(lom,4),round(him,4)],
-                                   "per_seed":per_seed,"n_bootstrap":NB}
+                                   "per_seed":per_seed,"n_bootstrap":NB,
+                                   "estimator":"minimal-corrected: per-seed delta averaged over the 3 seeds per resample, then 2.5/97.5 percentile over 2000 means"}
 (AUD/"confusion_matrices.json").write_text(json.dumps(conf,indent=2))
 (AUD/"paired_bootstrap.json").write_text(json.dumps(boot,indent=2))
 print("wrote audit artifacts to", AUD)

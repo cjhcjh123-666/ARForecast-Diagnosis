@@ -12,7 +12,7 @@ DIM = {  # hidden dim used for B head_params = dim*16+16
     "chronos_bolt-small": 512, "timesfm_2.5-200m": 1280, "moment-1-large": 1024,
     "moirai-1.1-R-small": 384,
 }
-OUT = Path("results/iclr/tsfm_deliver")
+OUT = Path(sys.argv[1]) if len(sys.argv)>1 else Path("results/iclr/tsfm_deliver")
 
 def recog_metrics3(pred, oracle):
     n = len(pred); cm = np.zeros((3, 3), int)

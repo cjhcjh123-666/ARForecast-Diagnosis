@@ -24,7 +24,9 @@ def main():
     ap.add_argument("--seeds", default="7,17,27")
     ap.add_argument("--device", default="cuda:2")
     ap.add_argument("--out", type=Path, default=Path("results/iclr/tsfm_deliver"))
+    ap.add_argument("--inits", default="pretrained,random")
     a = ap.parse_args()
+    a.inits = [x.strip() for x in a.inits.split(",") if x.strip()]
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "perwindow").mkdir(parents=True, exist_ok=True)
     seeds = [int(x) for x in a.seeds.split(",")]
@@ -40,7 +42,7 @@ def main():
                               ("bal3n", f"results/iclr/e4_balanced3_natural/windows/bal3n_s{seed}.npz")]:
                 if Path(root).is_file():
                     z = np.load(root); bal[tag] = (z["ctx"], z["fut"], z["oracle"])
-            for init in ["pretrained", "random"]:
+            for init in a.inits:
                 try:
                     embed, dim, _ = make_extractor(name, init, seed, a.device)
                 except Exception as e:

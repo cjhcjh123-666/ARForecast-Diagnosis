@@ -1,10 +1,10 @@
 """Generate SUMMARY.md for results/iclr/tsfm_deliver. All prose numbers are
 computed from metrics.csv at generation time so prose cannot drift from data."""
-import csv, json
+import csv, json, sys
 from pathlib import Path
 import numpy as np
 
-OUT = Path("results/iclr/tsfm_deliver")
+OUT = Path(sys.argv[1]) if len(sys.argv)>1 else Path("results/iclr/tsfm_deliver")
 rows = list(csv.DictReader(open(OUT/"metrics.csv")))
 cfg = json.loads((OUT/"config.json").read_text())
 MODELS = ["qwen3_8b_base","chronos_t5-small","chronos_t5-base","chronos_bolt-small",
@@ -27,18 +27,20 @@ def mean(key, m, i, t):
 
 def fmt(x):
     return f"{x:.3f}" if x is not None and x==x else "n/a"
+def _dp(x):
+    return f"{x:+.1f}" if abs(x)>=0.05 else "+0.0" if x>=0 else "-0.0"
 
 # per-model pretraining deltas on bal3 (family-label protocol)
 deltas = {m: (bal_mean(m,"pretrained","bal3") - bal_mean(m,"random","bal3"))*100.0 for m in MODELS}
 order = sorted(MODELS, key=lambda m: -deltas[m])
-delta_str = ", ".join(f"{m} {deltas[m]:+.1f}pp" for m in order)
+delta_str = ", ".join(f"{m} {_dp(deltas[m])}pp" for m in order)
 
 L=[]; add=L.append
 add("# TS-Foundation-Model Cross-Model Suite — Results Summary")
 add("")
 add("`results/iclr/tsfm_deliver/` — regenerated from `metrics.csv` by `scripts/make_tsfm_deliver_md.py`.")
 add("")
-add(f"**One-line result (family-label routing protocol, bal3):** the average pretraining gain over the random control is largest for **Qwen3-8B (+{deltas['qwen3_8b_base']:.1f} pp)**, followed by Chronos-T5-base/ small (+{deltas['chronos_t5-base']:.1f}/+{deltas['chronos_t5-small']:.1f} pp) and Bolt-small (+{deltas['chronos_bolt-small']:.1f} pp); TimesFM / MOMENT / Moirai show *negative* mean gains ({deltas['timesfm_2.5-200m']:+.1f} / {deltas['moment-1-large']:+.1f} / {deltas['moirai-1.1-R-small']:+.1f} pp). The gain therefore is not exclusive to language pretraining, but Qwen's is by far the largest and the only large one; whether that difference is statistically meaningful is addressed by the paired bootstrap intervals in `audit/paired_bootstrap.json`.")
+add(f"**One-line result (family-label routing protocol, bal3):** the average pretraining gain over the random control is largest for **Qwen3-8B (+{deltas['qwen3_8b_base']:.1f} pp)**, followed by Chronos-T5-base/ small (+{deltas['chronos_t5-base']:.1f}/{_dp(deltas['chronos_t5-small'])} pp) and Bolt-small (+{deltas['chronos_bolt-small']:.1f} pp); TimesFM / MOMENT / Moirai show *negative* mean gains ({deltas['timesfm_2.5-200m']:+.1f} / {deltas['moment-1-large']:+.1f} / {deltas['moirai-1.1-R-small']:+.1f} pp). The gain therefore is not exclusive to language pretraining, but Qwen's is by far the largest and the only large one; whether that difference is statistically meaningful is addressed by the paired bootstrap intervals in `audit/paired_bootstrap.json`.")
 add("")
 add("## 1. Protocol")
 add("")
@@ -142,7 +144,11 @@ try:
     pb = json.loads((OUT/"audit/paired_bootstrap.json").read_text())["C_routing"]
     def _fmt(m):
         d=pb[m]["bal3"]; return f"{m}: BA {d['ba_delta_mean_over_seeds']:+.3f} [{d['ba_delta_ci95'][0]:+.3f}, {d['ba_delta_ci95'][1]:+.3f}], MSE {d['mse_delta_mean_over_seeds']:+.3f} [{d['mse_delta_ci95'][0]:+.3f}, {d['mse_delta_ci95'][1]:+.3f}]"
-    add(f"- **Significance (window-level paired bootstrap, 95% CI, pretrained \u2212 random, bal3, family-label protocol)**: " + "; ".join(_fmt(m) for m in MODELS) + ". Only Qwen's balanced-accuracy gain and Qwen/Chronos-T5-base routed-MSE gains have CIs excluding 0 (favoring pretrained); MOMENT/Moirai routed-MSE CIs exclude 0 favoring *random*. Full per-seed numbers in `audit/paired_bootstrap.json`.")
+    pos_ba=[m for m in MODELS if pb[m]["bal3"]["ba_delta_ci95"][0]>0]
+    neg_ba=[m for m in MODELS if pb[m]["bal3"]["ba_delta_ci95"][1]<0]
+    pos_mse=[m for m in MODELS if pb[m]["bal3"]["mse_delta_ci95"][1]<0]
+    neg_mse=[m for m in MODELS if pb[m]["bal3"]["mse_delta_ci95"][0]>0]
+    add(f"- **Significance (window-level paired bootstrap, 95% CI, pretrained \u2212 random, bal3, family-label protocol)**: " + "; ".join(_fmt(m) for m in MODELS) + f". Balanced-accuracy CIs excluding 0: {', '.join(pos_ba) if pos_ba else 'none'} (positive) and {', '.join(neg_ba) if neg_ba else 'none'} (negative). Routed-MSE CIs excluding 0: {', '.join(pos_mse) if pos_mse else 'none'} (pretrained lower) and {', '.join(neg_mse) if neg_mse else 'none'} (random lower). Nominal intervals, fixed 3 seeds, no multiple-comparison correction. Full per-seed numbers in `audit/paired_bootstrap.json`.")
 except Exception as e:
     add(f"- (paired-bootstrap table unavailable: {e})")
 add("- **Numerical readout**: pretrained helps for Qwen (0.588 vs 0.679), Bolt (0.405 vs 1.049) and TimesFM (0.404 vs 0.895); MOMENT random ≈ pretrained (0.535 vs 0.504); Moirai random is close to pretrained (0.394 vs 0.435).")
