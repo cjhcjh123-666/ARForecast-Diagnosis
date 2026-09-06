@@ -1,36 +1,40 @@
 # TS-Foundation-Model Cross-Model Suite — Results Summary
 
-`results/iclr/tsfm_deliver/` — generated `2026-09-06` by `scripts/iclr_tsfm_deliver.py` + `scripts/rebuild_metrics_from_pw.py`.
+`results/iclr/tsfm_deliver/` — regenerated from `metrics.csv` by `scripts/make_tsfm_deliver_md.py`.
 
-**One-line result:** on the clean 5-class structure-recognition task almost every model (pretrained *or* random) is strong, but only the **language-pretrained Qwen3-8B** representation shows a large pretraining advantage on **zero-shot compositional routing** (bal3 balanced-acc `0.833` vs its random control `0.558`). No time-series foundation model shows such an advantage (pretrained <= random for Bolt/TimesFM/MOMENT/Moirai on routing).
+**One-line result (family-label routing protocol, bal3):** the average pretraining gain over the random control is largest for **Qwen3-8B (+27.5 pp)**, followed by Chronos-T5-base/ small (+10.0/+3.6 pp) and Bolt-small (+0.8 pp); TimesFM / MOMENT / Moirai show *negative* mean gains (-4.2 / -9.4 / -9.2 pp). The gain therefore is not exclusive to language pretraining, but Qwen's is by far the largest and the only large one; whether that difference is statistically meaningful is addressed by the paired bootstrap intervals in `audit/paired_bootstrap.json`.
 
 ## 1. Protocol
 
 - Context **C=64**, horizon **H=16**, seeds **7/17/27**; windows are context-standardized (mean/std of the 64-length context).
 - **A. Structure recognition**: 5-class family probe (trend/periodic/local/mixture/regime), 450 train / 300 test windows per seed; frozen backbone + full-batch softmax probe (2,000 steps, lr=0.5, L2=1e-3). `A_recog_shuf` = per-window independent random time-permutation, probe retrained on shuffled features.
 - **B. Numerical readout**: frozen rep + linear head → H=16; AdamW lr=1e-3, wd=0, full-batch 300 epochs. MSE in context-normalized space; `head_params = dim*16+16`.
-- **C. Compositional routing**: router = softmax probe fit on the 270 clean trend/periodic/local windows (family labels; identical to the E4 reference protocol), tested on two balanced 3-class OOD sets (**bal3**, **bal3n**; 120 windows each, T/P/L = 40/40/40; oracle = argmin future MSE over the 3 experts). Balanced accuracy / macro-F1 / per-class recall / routed MSE.
+- **C. Compositional routing**: router = softmax probe fit on the 270 clean trend/periodic/local windows, tested on the two balanced 3-class OOD sets (**bal3**, **bal3n**; 120 windows each, T/P/L=40/40/40; oracle = argmin future MSE over the 3 experts). **Two training-label variants**:
+  - `C_routing` — **family labels** on the 270 clean windows (kind id). **This is the original E4 protocol**: every original E4 routing script (`iclr_e4_balanced{,_3,_3_natural,_full}.py`, `iclr_learned_router.py`) trains on `tr_label=kk[train_idx]; clean=tr_label<3`. The oracle expert is used only as the *test-set* routing target / recall ground truth. Qwen numbers reproduce the E4 reference JSON exactly.
+  - `C_routing_oracle` — **oracle-expert labels** on the 270 clean windows (argmin future-MSE expert per clean window). Added this round as a supervision-target **sensitivity analysis** (see §4.2).
 - **native**: each model's own forecasting interface on the 300 synth5 test windows. Point extraction: Chronos-T5 = median of 20 samples; Chronos-Bolt = 0.5 quantile; TimesFM = official decode point index 5 (GPU port verified bit-identical to `forecast_naive`); Moirai = median of 50 distribution samples, fixed patch 16; **MOMENT = n/a** (official forecasting requires a learned head); **Qwen = n/a** (its native numerical generation is the separate recognition-vs-generation experiment in the paper).
 
 ## 2. Deliverables
 
 | File | Content |
 |---|---|
-| `metrics.csv` | **324 rows** — one per (model, init, seed, task, test_set); fields: accuracy / balanced_accuracy / macro_f1 / recall_trend / recall_periodic / recall_local / mse / head_params |
-| `perwindow/pw_<model>_<init>_s<seed>.npz` (42 files) | per-window arrays: `a_true/a_pred`, `as_true/as_pred`, `b_future/b_pred`, `c_{bal3,bal3n}_{oracle,pred,err}` (err = 3 experts' per-window MSE), `n_future/n_pred` |
-| `config.json` | checkpoints, families, dims, pooling, normalization, training settings, native point-extraction, and the **Moirai pipeline note** |
+| `metrics.csv` | **324 rows** — one per (model, init, seed, task, test_set) |
+| `perwindow/pw_*.npz` (42) | family-label C + A/B/native per-window arrays |
+| `perwindow/pw_oracle_*.npz` (42) | oracle-label C per-window arrays |
+| `config.json` | checkpoints, params, dims, pooling, normalization, training settings, native point-extraction, Moirai pipeline note, C label-variant statement |
+| `audit/` | label crosstab, class counts, routing confusion matrices, paired bootstrap CIs |
 
 ## 3. Models
 
 | model | family | params | dim | pooling | native interface |
 |---|---|---:|---:|---|---|
-| qwen3_8b_base | LLM (decoder-only, text tok.) | 8.19B | 4096 | last-token hidden | n/a (LM generation) |
-| chronos_t5-small | T5 seq2seq TS FM | 46M | 512 | encoder last token (EOS) | median of 20 samples |
-| chronos_t5-base | T5 seq2seq TS FM | 201M | 768 | encoder last token (EOS) | median of 20 samples |
-| chronos_bolt-small | patched T5 TS FM (Chronos-Bolt) | 48M | 512 | encoder [REG] token | 0.5 quantile |
-| timesfm_2.5-200m | decoder-only patched TS FM | 231M | 1280 | last patch hidden | decode point idx 5 |
-| moment-1-large | encoder-only patch TS FM (flan-t5-large) | 346M | 1024 | MOMENT embed mean | n/a (learned head) |
-| moirai-1.1-R-small | patch×variate encoder TS FM (uni2ts 1.x) | 14M | 384 | last patch-token hidden (p=16) | median of 50 samples (p=16) |
+| qwen3_8b_base | LLM (decoder-only, text tok.) | 8191.00M | 4096 | last-token hidden | n/a (LM generation) |
+| chronos_t5-small | T5 seq2seq TS FM | 46.15M | 512 | encoder last token (EOS) | median of 20 samples |
+| chronos_t5-base | T5 seq2seq TS FM | 201.40M | 768 | encoder last token (EOS) | median of 20 samples |
+| chronos_bolt-small | patched T5 TS FM (Chronos-Bolt) | 47.72M | 512 | encoder [REG] token | 0.5 quantile |
+| timesfm_2.5-200m | decoder-only patched TS FM | 231.30M | 1280 | last patch hidden | decode point idx 5 |
+| moment-1-large | encoder-only patch TS FM (flan-t5-large) | 346.40M | 1024 | MOMENT embed mean | n/a (learned head) |
+| moirai-1.1-R-small | patch×variate encoder TS FM (uni2ts 1.x) | 13.83M | 384 | last patch-token hidden (p=16) | median of 50 samples (p=16) |
 
 > **Moirai note**: Moirai's attention operates on (patch × variate) tokens and cannot be fed a raw `(B,64)` tensor; inputs are constructed exactly like `MoiraiForecast._convert` (target `(B, n_patch, max_patch=128)` + sample/time/variate ids + masks). Env workarounds (jaxtyping shim, einops/dynamo skip, uni2ts `__init__` bypass) are in `config.json`.
 
@@ -46,7 +50,7 @@
 | moment-1-large | 0.993 / 0.976 | 0.231 / 0.228 | 0.535 / 0.504 | 0.631 / 0.725 | 0.628 / 0.722 | 0.589 / 0.723 | n/a / n/a |
 | moirai-1.1-R-small | 0.997 / 0.990 | 0.461 / 0.187 | 0.394 / 0.435 | 0.564 / 0.656 | 0.550 / 0.656 | 0.521 / 0.639 | 1.471 / 2.274 |
 
-### 4.1 C-routing per-class recall (bal3, mean over seeds, pretrained | random)
+### 4.1 C-routing per-class recall (bal3, family-label protocol, mean over seeds, pretrained | random)
 
 | model | recall_trend | recall_periodic | recall_local |
 |---|---:|---:|---:|
@@ -58,9 +62,9 @@
 | moment-1-large | 0.258 / 0.767 | 0.642 / 0.475 | 0.992 / 0.933 |
 | moirai-1.1-R-small | 0.267 / 0.633 | 0.425 / 0.408 | 1.000 / 0.925 |
 
-### 4.2 C with oracle-expert training labels (`C_routing_oracle`, bal3, mean over seeds, pretrained | random)
+### 4.2 Supervision-target sensitivity: oracle-expert training labels (`C_routing_oracle`, mean over seeds, pretrained | random)
 
-Router trained on the same 270 clean windows but with **oracle-expert labels** (argmin future MSE expert per clean window, per the literal task-sheet reading) instead of family labels. Under this supervision every method collapses to near/ below chance on the balanced OOD sets — the oracle-expert label is a noisy target on clean primitives (family vs oracle agree only ~64%), so this variant does **not** support compositional transfer and the family-label protocol (which reproduces the paper's E4 numbers exactly) is retained as the primary evidence.
+Same 270 clean windows and same two OOD test sets as §4, but the router is trained on **oracle-expert labels** (argmin future-MSE expert per clean window) instead of family labels. This answers a *different* question — "can the frozen representation map clean windows to the actually-winning expert" — and is **not** the protocol used by the original E4 experiments (see §7). Mean balanced accuracy on the OOD sets:
 
 | model | C_oracle bal3 balacc | C_oracle bal3n balacc |
 |---|---:|---:|
@@ -71,6 +75,8 @@ Router trained on the same 270 clean windows but with **oracle-expert labels** (
 | timesfm_2.5-200m | 0.358 / 0.308 | 0.336 / 0.314 |
 | moment-1-large | 0.381 / 0.508 | 0.369 / 0.519 |
 | moirai-1.1-R-small | 0.231 / 0.400 | 0.186 / 0.431 |
+
+Under oracle-expert supervision all methods fall to roughly chance-to-0.5 on the balanced OOD sets. On the clean training windows themselves, family and oracle-expert labels agree only ~64% (see `audit/clean270_label_crosstab.json`), i.e. the two targets are genuinely different; which target is the intended one must follow the original experiment definition (§7), not whichever gives better numbers.
 
 ## 5. Per-seed detail (all rows)
 
@@ -317,13 +323,26 @@ Router trained on the same 270 clean windows but with **oracle-expert labels** (
 | moirai-1.1-R-small | random | 27 | C_routing | bal3n | 120 | | 0.6417 | 0.6271 | 0.5 | 0.475 | 0.95 | 1.073 | |
 | moirai-1.1-R-small | random | 27 | native_forecast | synth5 | 300 | | | | | | | 2.2817 | |
 
-## 6. Key observations (descriptive)
+## 6. Observations
 
 - **Recognition is easy for everyone**: pretrained A_recog_orig ≈ 0.98–1.00 for all models; even random weights give ≥0.90 for the patch-based TS FMs (chronos-T5 random ~0.61 is the exception). Clean-family separability alone does **not** indicate transfer.
 - **Order sensitivity varies strongly**: A_recog_shuf drops most for MOMENT (0.993→0.231), Bolt (1.0→0.37), TimesFM (1.0→0.56), Moirai (0.997→0.46); Qwen drops 0.981→0.64.
-- **Compositional routing (the key test)**: only **Qwen3-8B pretrained** beats its random control by a wide margin (0.833 vs 0.558 bal3). For every TS FM the pretrained router is ≤ its random control (Bolt 0.683 vs 0.675, TimesFM 0.653 vs 0.694, MOMENT 0.631 vs 0.725, Moirai 0.564 vs 0.656). No TS-FM representation reproduces the language-pretrained routing transfer.
-- **Numerical readout**: pretrained helps for Qwen (0.588 vs 0.679), Bolt (0.405 vs 1.049) and TimesFM (0.404 vs 0.895); MOMENT random ≈ pretrained; Moirai random is close to pretrained (0.436 vs 0.394).
-- **Native forecasting**: TS-FM native interfaces (pretrained) give 0.53–0.67 MSE; random-weight native is 5–25× worse (TimesFM random 16.9, Chronos-T5-base random 12.4), as expected. MOMENT/Qwen native are not defined under this protocol (documented).
-- **Oracle-expert-label C sanity check**: retraining the C router on oracle-expert (argmin future-MSE) labels of the 270 clean windows collapses every method to ≈0.2–0.5 balanced accuracy (Qwen 0.833→0.23, Bolt 0.683→0.40, TimesFM 0.653→0.51, Moirai 0.564→0.31, MOMENT 0.631→0.37). Family-vs-oracle labels agree only ~64% on clean windows, so oracle-expert supervision is a poor learning signal there; the family-label router (which reproduces the paper's E4 numbers) remains the primary C evidence.
+- **Compositional routing (family-label protocol, bal3 mean pretraining gain)**: qwen3_8b_base +27.5pp; chronos_t5-base +10.0pp; chronos_t5-small +3.6pp; chronos_bolt-small +0.8pp; timesfm_2.5-200m -4.2pp; moirai-1.1-R-small -9.2pp; moment-1-large -9.4pp. Qwen's gain is the largest; direction/size varies across TS FMs, so one should *not* claim that only language pretraining transfers or that no TS FM does — the per-family deltas and paired intervals in `audit/` are the defensible statements.
+- **Significance (window-level paired bootstrap, 95% CI, pretrained − random, bal3, family-label protocol)**: qwen3_8b_base: BA +0.275 [+0.200, +0.351], MSE -0.594 [-0.820, -0.367]; chronos_t5-small: BA +0.036 [-0.077, +0.137], MSE -0.126 [-0.529, +0.258]; chronos_t5-base: BA +0.100 [-0.007, +0.215], MSE -0.712 [-1.018, -0.407]; chronos_bolt-small: BA +0.008 [-0.152, +0.172], MSE -0.068 [-0.353, +0.084]; timesfm_2.5-200m: BA -0.042 [-0.254, +0.139], MSE +0.150 [-0.227, +0.543]; moment-1-large: BA -0.094 [-0.220, +0.027], MSE +0.775 [+0.451, +1.087]; moirai-1.1-R-small: BA -0.092 [-0.227, +0.017], MSE +0.432 [+0.115, +0.894]. Only Qwen's balanced-accuracy gain and Qwen/Chronos-T5-base routed-MSE gains have CIs excluding 0 (favoring pretrained); MOMENT/Moirai routed-MSE CIs exclude 0 favoring *random*. Full per-seed numbers in `audit/paired_bootstrap.json`.
+- **Numerical readout**: pretrained helps for Qwen (0.588 vs 0.679), Bolt (0.405 vs 1.049) and TimesFM (0.404 vs 0.895); MOMENT random ≈ pretrained (0.535 vs 0.504); Moirai random is close to pretrained (0.394 vs 0.435).
+- **Native forecasting** (pretrained | random, mean over seeds): Chronos-T5-small 0.672 | 9.56, Chronos-T5-base 0.676 | 12.37, Bolt-small 0.528 | 6.99, TimesFM 0.601 | 16.89, **Moirai 1.471 | 2.274**. MOMENT/Qwen native are not defined under this protocol (documented).
+
+## 7. Label-consistency audit (training labels used across experiments)
+
+**Finding:** the *original* E4 / C experiments train the router on **family labels** of the 270 clean windows. Evidence: every original routing script builds training labels as `tr_label=kk[train_idx]; clean=tr_label<3; softmax_regression(..., tr_label[clean])` — `scripts/iclr_e4_balanced.py`, `iclr_e4_balanced3.py`, `iclr_e4_balanced3_natural.py`, `iclr_e4_balanced_full.py`, `iclr_learned_router.py`. The **oracle expert is used only as the test-set routing target and per-class recall ground truth**. The family-label pipeline in this suite (`scripts/iclr_tsfm_deliver.py`) reproduces the E4 reference numbers exactly (e.g. Qwen bal3 balacc per seed 0.875/0.825/0.800 = reference JSON).
+
+**Consequence for the manuscript:** the Method/Protocol text describing router supervision on clean windows should say **family labels** (the three clean dynamics' identities); any text implying the router is trained on the future-MSE-best expert is wrong and should be corrected. `C_routing_oracle` (`scripts/iclr_tsfm_oracleC.py`) is retained as an explicit supervision-target sensitivity analysis, clearly separated from the primary results.
+
+## 8. Audit artifacts (`audit/`)
+
+- `clean270_label_crosstab.json/.md` — per-seed family × oracle-expert label crosstab on the 270 clean training windows (+ agreement).
+- `test_class_counts.json` — per-seed oracle class counts on bal3/bal3n (T/P/L).
+- `confusion_matrices.json` — per (model, init, seed, test_set) routing confusion matrix (rows=oracle, cols=predicted) for `C_routing` and `C_routing_oracle`.
+- `paired_bootstrap.json` — 95% percentile bootstrap (2,000 resamples, window-level, stratified by seed) of the **pretrained − random** difference in balanced accuracy and routed MSE on bal3/bal3n, per model and protocol.
 
 > Caveat: these are diagnostic accessibility/routing numbers on controlled synthetic windows; no OOD test set was used for any model/training selection. See `config.json` for exact checkpoint paths and the Moirai/native caveats.
