@@ -136,7 +136,19 @@ beldon2018measuring}.  Recent work probes LLMs on temporal data
 \citep{liu2024pre-training,tan2024are}.  \citet{manifold2026} probe Qwen3 on
 synthetic dynamics; our layer-wise probes (Section~\ref{sec:layerwise})
 complement this by showing where in the stack the temporal structure lives and
-how forecasting fine-tuning shifts it.
+how forecasting fine-tuning shifts it.  Parallel work on time-series
+foundation models probes \emph{temporal concepts} (trend, periodicity, level)
+inside their representations and studies representation $\to$ concept $\to$
+intervention chains \citep{tsfm_probe2025,tsfm_intervention2025}.  We share
+the representation-probing methodology but ask a different attribution
+question: instead of asking \emph{which} temporal concepts are encoded, we ask
+\emph{whether the language-pretraining prior transfers through the
+recognition interface but not the native numeric-generation interface}, and
+whether the accessible structure is compositionally useful for routing.  Our
+key observation---that the \emph{same} frozen backbone gives opposite
+conclusions under different evaluation interfaces (linear probe vs.\ native
+decoding)---is the contrast that distinguishes this work from prior probing
+analyses.
 
 \textbf{Mixture-of-experts and routing for time series.}  Routing among
 specialized forecasters dates back to forecast combination
@@ -184,8 +196,14 @@ Table~\ref{tab:e1} summarizes the controlled ablation.  With the only variable
 being initialization, pretrained checkpoints reduce test MSE by $2.2$--$25\times$
 across datasets and seeds, with far lower variance and $100\%$ parse coverage.
 The small-model $2\times2$ (size $\times$ LoRA/full-FT) control confirms the
-gap is not a low-rank artifact: random full fine-tuning still lags pretrained
-LoRA by $10$--$13\times$.
+gap is not a low-rank artifact: across three seeds of full fine-tuning on
+Qwen3-0.6B, pretrained initialization yields lower MSE in all three runs, but
+random full fine-tuning is highly variable (per-seed ratios $23.7\times$,
+$1.7\times$, $46.5\times$; ratio of mean MSEs $20.9\times$).  This is not
+evidence that pretrained weights already forecast numerically---it shows they
+provide a substantially better starting point for learning the forecasting
+map, which motivates our separation between accessible structure and native
+numeric generation below.
 
 \begin{table}[t]
 \centering
