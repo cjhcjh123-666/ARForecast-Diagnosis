@@ -252,14 +252,14 @@ def main():
     rows=run_model(a.model_key,a.model_id,path,a.device,[int(x) for x in a.seeds.split(",")],
                    set(a.tasks.split(",")),a.out,inits=tuple(x for x in a.inits.split(",") if x))
     a.out.mkdir(parents=True,exist_ok=True)
-    f=a.out/"all_metrics_long.csv"
+    tag="-".join(a.inits.split(","))
+    f=a.out/"raw"/f"metrics_{a.model_key}_{tag}.csv"
+    f.parent.mkdir(parents=True,exist_ok=True)
     fields=sorted({k for r in rows for k in r})
-    newfile=not f.exists()
-    with open(f,"a",newline="") as fh:
-        w=csv.DictWriter(fh,fieldnames=fields)
-        if newfile: w.writeheader()
+    with open(f,"w",newline="") as fh:
+        w=csv.DictWriter(fh,fieldnames=fields); w.writeheader()
         for r in rows: w.writerow(r)
-    print("appended",len(rows),"rows ->",f)
+    print("wrote",len(rows),"rows ->",f)
 
 if __name__=="__main__":
     main()
