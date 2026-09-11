@@ -6,7 +6,7 @@
   （DeepSeek-LLM-7B、DeepSeek-V2-Lite、Mistral-7B-v0.3、OLMo-2-7B、OLMo-2-13B）。
 - API discovery 完成：`/v1/models` 返回 1235 个模型，已按 family 冻结 ≤15 个（`configs/api_models_frozen.yaml`）；未产生付费调用。
 - 统一 Open-LM runner 实现：`scripts/openllm_suite.py`（clean/shuffle、linear+MLP readout、family-label/oracle-label routing、MLP router、pooling、native）。
-- Qwen3-8B 验证跑已启动（pretrained pass），用于与既有 0.833/0.522 对账。
+- **Qwen3-8B 协议对账已完成且完全一致**（见 `docs/open_llm_validation_qwen.md`）：clean 0.981、shuffle 0.640、readout 0.588、family-label bal3 0.833 / bal3n 0.831、routed MSE 0.710；新增 MLP64 readout 0.554。
 
 ## 阻塞
 - **Llama-3.1-8B / Llama-3.2-3B / Gemma-2-9B 为 gated repo，服务器未设置 HF_TOKEN** → 需提供 token 才能下载；
