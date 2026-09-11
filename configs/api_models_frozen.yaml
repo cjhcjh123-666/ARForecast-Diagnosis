@@ -1,0 +1,62 @@
+{
+  "created": "20260911_173140",
+  "base_url": "https://api2.aigcbest.top",
+  "selection_rule": "<=2 per family from the live listing; chat protocol",
+  "models": [
+    {
+      "family": "deepseek",
+      "model_id": "deepseek-chat",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "deepseek",
+      "model_id": "deepseek-reasoner",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "llama",
+      "model_id": "llama-3.3-70b-instruct",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "llama",
+      "model_id": "llama-3.1-405b",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "qwen",
+      "model_id": "qwen-max",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "qwen",
+      "model_id": "360zhinao-turbo-qwen-plus",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "mistral",
+      "model_id": "mistral-large-2402",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "mistral",
+      "model_id": "labs-mistral-small-creative",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "gemma",
+      "model_id": "gemma-3-27b-it",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "other",
+      "model_id": "chatgpt-4o-latest",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "other",
+      "model_id": "Pro/THUDM/GLM-4.1V-9B-Thinking",
+      "protocol_hint": "chat"
+    }
+  ]
+}
