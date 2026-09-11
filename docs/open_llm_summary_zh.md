@@ -19,3 +19,9 @@
 2. 真实数据 15 数据集 P/R 归因 + BH-FDR。
 3. 本地 native generation（base LMs）+ API 直接生成 zoo（需 RUN_PAID_API=1 与预算上限）。
 4. 生成 Table A–E、Figure A–E、`docs/open_llm_final_report.md`，并据实决定 claim（Case A–D）。
+
+## 下载进度快照（2026-09-11 20:45，全部在跑）
+公开模型（hf-mirror，3 进程）：DeepSeek-LLM-7B 6.2GB / V2-Lite 4.6GB / Mistral-7B 9.7GB / OLMo-2-7B 14GB / OLMo-2-13B 32GB（均有 incomplete 分片，未完成）。
+Gated 模型（ModelScope 官方镜像，4 进程；HF token 无 gated 授权）：gemma-2-9b 94%、gemma-2-2b 94%、llama-3.2-3B 55%、llama-3.1-8B 22%。
+代理：mihomo(7899, 用户订阅) 存活，huggingface.co 可达。
+计划：任一模型下载完成即刻 smoke → matched random → A/B/C/C2/R → 10-seed → real-world → native；随后出 Table A–E / Figure A–E / final report。
