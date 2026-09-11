@@ -32,3 +32,17 @@ All negative results and killed runs are kept (logs/ + this file); nothing was s
   3. accept the slow ModelScope transfer (runs in background; ~1–2 days for all four).
 - Public P0/P1 models (DeepSeek-LLM-7B, DeepSeek-V2-Lite, Mistral-7B-v0.3, OLMo-2-7B, OLMo-2-13B) continue
   at ≈7.5 MB/s aggregate via hf-mirror and will be run first.
+
+## Update 2 (2026-09-11, user-provided subscription on port 7899)
+
+- Existing mihomo on **7890 was broken**: CONNECT tunnels were created but every HTTPS request failed
+  (baidu HTTP 502, HTTPS 000; node servers for HY2 nodes unreachable). Root cause: its upstream nodes are dead.
+- User supplied a new subscription; we run a **separate mihomo instance** on **127.0.0.1:7899**
+  (config `.proxycfg/config.yaml`, log `.proxycfg/mihomo_7899.log`; the user's original 7890 instance is untouched).
+- Through 7899: `https://www.baidu.com` 200, **`https://huggingface.co` 200** → HF is now reachable.
+- **HF token status: authenticated but NOT authorized for gated repos.** `whoami` = five6667; metadata calls
+  return 200, but file downloads return 403 `Access to model … is restricted and you are not in the authorized list`
+  (same for Llama-3.1-8B, Llama-3.2-3B, Gemma-2-9B, Gemma-2-2b). Action: the account must be granted access on the
+  model pages (Meta gating for Llama; Google terms for Gemma), or provide a token from an already-approved account.
+- Public P0/P1 downloads continue via hf-mirror (aggregate ≈7.5 MB/s; sizes at 18:10 — DeepSeek-LLM-7B 1.0 GB,
+  DeepSeek-V2-Lite 2.1 GB, Mistral-7B 2.8 GB, OLMo-2-7B 3.6 GB, OLMo-2-13B 4.6 GB).
