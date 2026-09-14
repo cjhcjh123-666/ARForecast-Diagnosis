@@ -17,15 +17,15 @@ _Auto-generated from result CSVs by `scripts/openllm_make_report.py` (repo `/995
 | model | family | params | hidden | checkpoint | status |
 |---|---|---:|---:|---|---|
 | Qwen3-8B | Qwen | 8.19B | 4096 | Qwen/Qwen3-8B-Base (local) | P+R done |
-| Llama-3.1-8B | Llama | 8.0B | 4096 | meta-llama/Llama-3.1-8B (rev d04e592) | P done, R running |
+| Llama-3.1-8B | Llama | 8.0B | 4096 | meta-llama/Llama-3.1-8B (rev d04e592) | P+R done |
 | Llama-3.2-3B | Llama | 3.2B | 3072 | meta-llama/Llama-3.2-3B (rev 13afe51) | P+R done |
 | Gemma-2-9B | Gemma | 9.2B | 3584 | google/gemma-2-9b (rev 33c1930) | P+R done |
 | Gemma-2-2B | Gemma | 2.6B | 2304 | google/gemma-2-2b (rev c5ebcd4) | P+R done |
-| DeepSeek-LLM-7B | DeepSeek | 6.9B | 4096 | deepseek-ai/deepseek-llm-7b-base (rev 7683fea) | R done, P running |
+| DeepSeek-LLM-7B | DeepSeek | 6.9B | 4096 | deepseek-ai/deepseek-llm-7b-base (rev 7683fea) | P+R done |
 | Mistral-7B-v0.3 | Mistral | 7.2B | 4096 | mistralai/Mistral-7B-v0.3 (rev caa1feb) | P+R done |
-| OLMo-2-7B | OLMo | 6.9B | 4096 | allenai/OLMo-2-1124-7B (rev 7df9a82) | P+R running |
-| OLMo-2-13B (P1) | OLMo | 13B | 5120 | allenai/OLMo-2-1124-13B (rev 3fefddc) | P+R running |
-| DeepSeek-V2-Lite (MoE, P1) | DeepSeek | 15.7B total / 2.4B active | 2048 | deepseek-ai/DeepSeek-V2-Lite (rev 604d566) | R done, P running |
+| OLMo-2-7B | OLMo | 6.9B | 4096 | allenai/OLMo-2-1124-7B (rev 7df9a82) | P+R done |
+| OLMo-2-13B (P1) | OLMo | 13B | 5120 | allenai/OLMo-2-1124-13B (rev 3fefddc) | P+R done |
+| DeepSeek-V2-Lite (MoE, P1) | DeepSeek | 15.7B total / 2.4B active | 2048 | deepseek-ai/DeepSeek-V2-Lite (rev 604d566) | P+R done |
 | Qwen3-0.6B / 1.7B | Qwen | 0.6B / 1.7B | 0.5 | Qwen3-0.6B / Qwen3-1.7B (local cache) | scale sweep done |
 
 Time-series foundation models used as cross-architecture reference (prior round, same protocol): Chronos-T5-small/base, Chronos-Bolt-small, TimesFM-2.5-200m, MOMENT-1-large, Moirai-1.1-R-small.
@@ -37,15 +37,15 @@ Time-series foundation models used as cross-architecture reference (prior round,
 | model | clean P/R | clean Δ | shuffle P/R | readout P/R (MSE) | **family-label OOD P/R** | **Δ routing** | oracle-label P/R | MLP-router P/R |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | **Qwen3-8B** | 0.981/0.919 | +0.062 | 0.640/0.647 | 0.588/0.625 | 0.833/0.522 | **+0.311** | 0.261/0.456 | —/— |
-| **Llama-3.1-8B** | 0.974/— | — | 0.608/— | 0.560/— | 0.744/— | — | 0.311/— | 0.803/— |
+| **Llama-3.1-8B** | 0.974/0.927 | +0.048 | 0.608/0.671 | 0.560/0.885 | 0.744/0.517 | **+0.228** | 0.311/0.483 | 0.803/0.508 |
 | **Llama-3.2-3B** | 0.967/0.936 | +0.031 | 0.617/0.652 | 0.574/0.705 | 0.664/0.517 | **+0.147** | 0.394/0.517 | 0.647/0.469 |
 | **Gemma-2-9B** | 0.959/0.781 | +0.178 | 0.607/0.288 | 0.602/1.941 | 0.644/0.444 | **+0.200** | 0.369/0.425 | 0.642/0.461 |
 | **Gemma-2-2B** | 0.958/0.833 | +0.124 | 0.573/0.326 | 0.640/1.570 | 0.597/0.447 | **+0.150** | 0.333/0.467 | 0.644/0.461 |
 | **Mistral-7B-v0.3** | 0.989/0.912 | +0.077 | 0.717/0.631 | 0.524/0.697 | 0.639/0.533 | **+0.106** | 0.281/0.411 | 0.675/0.431 |
-| **DeepSeek-LLM-7B** | —/0.932 | — | —/0.600 | —/0.695 | —/0.533 | — | —/0.531 | —/0.464 |
-| **OLMo-2-7B** | —/— | — | —/— | —/— | —/— | — | —/— | —/— |
-| **OLMo-2-13B** | —/— | — | —/— | —/— | —/— | — | —/— | —/— |
-| **DeepSeek-V2-Lite (MoE)** | —/0.940 | — | —/0.631 | —/0.583 | —/0.483 | — | —/0.403 | —/0.436 |
+| **DeepSeek-LLM-7B** | 0.983/0.932 | +0.051 | 0.671/0.600 | 0.627/0.695 | 0.608/0.533 | **+0.075** | 0.317/0.531 | 0.589/0.464 |
+| **OLMo-2-7B** | 0.986/0.937 | +0.049 | 0.678/0.661 | 0.504/0.585 | 0.586/0.492 | **+0.094** | 0.336/0.458 | 0.544/0.428 |
+| **OLMo-2-13B** | 0.976/0.929 | +0.047 | 0.736/0.660 | 0.554/0.584 | 0.586/0.503 | **+0.083** | 0.292/0.464 | 0.636/0.450 |
+| **DeepSeek-V2-Lite (MoE)** | 0.983/0.940 | +0.043 | 0.649/0.631 | 0.645/0.583 | 0.797/0.483 | **+0.314** | 0.253/0.403 | 0.797/0.436 |
 
 ## 4. Table C — Language models vs time-series foundation models (family-label routing Δ, bal3)
 
@@ -96,13 +96,13 @@ Provider-side failures (recorded, not replaced): GLM-4.1V-9B-Thinking (403 disab
 
 ## 6. Mechanism summary
 
-1. **Structure is accessible and transferable across families.** Under family-label supervision, pretrained ≻ random on OOD compositional routing for every completed model (Qwen3-8B +31.1pp; Gemma-2-9B +19.9pp; Llama-3.2-3B +13.8pp; Gemma-2-2B +13.3pp; Mistral-7B +10.7pp), and pretrained is also better on clean recognition, shuffle robustness and numerical readout. The effect is therefore not Qwen-specific.
-2. **The conversion to a decision is interface-dependent.** Under oracle-label supervision (target = expert with lowest *realized-future* MSE) every completed model turns negative (Qwen −23.6pp; Mistral −16.5pp; Gemma-2-2B −13.3pp; Llama-3.2-3B −10.8pp; Gemma-2-9B −5.6pp). The oracle target itself is unstable: family↔oracle agreement is only ~64% on clean windows, and changing the expert bank flips the winning family on 37–41% of OOD windows. So the mechanism result is: *pretrained representations organize a stable latent partition, not a realization-level expert choice.*
+1. **Structure is accessible and transferable across families — 10/10 models.** Under family-label supervision, pretrained ≻ random on OOD compositional routing for **every** evaluated base LM: Qwen3-8B +31.1pp; DeepSeek-V2-Lite (MoE) +31.4pp; Llama-3.1-8B +22.8pp; Gemma-2-9B +20.0pp; Gemma-2-2B +15.0pp; Llama-3.2-3B +14.7pp; Mistral-7B-v0.3 +10.6pp; OLMo-2-7B +9.4pp; OLMo-2-13B +8.3pp; DeepSeek-LLM-7B +7.5pp. The effect is therefore not Qwen-specific; its magnitude varies by checkpoint/family.
+2. **The conversion to a decision is interface-dependent — 10/10 models flip sign.** Under oracle-label supervision (target = expert with lowest *realized-future* MSE) every model turns negative: DeepSeek-LLM-7B −21.4pp; Qwen3-8B −19.5pp; Llama-3.1-8B −17.2pp; OLMo-2-13B −17.2pp; DeepSeek-V2-Lite −15.0pp; Gemma-2-2B −13.4pp; Mistral-7B −13.0pp; Llama-3.2-3B −12.3pp; OLMo-2-7B −12.2pp; Gemma-2-9B −5.6pp. The oracle target itself is unstable: family↔oracle agreement is only ~64% on clean windows, and changing the expert bank flips the winning family on 37–41% of OOD windows. So the mechanism result is: *pretrained representations organize a stable latent partition, not a realization-level expert choice.*
 3. **Direct numerical generation fails on both paths.** Local base LMs produce forecasts 4–15× worse than the oracle expert; API-served models are worse still (strict numeric-format parse rate ≤33%, most 0–6%). Representation read-out is feasible, native numerical generation is not.
 
 ## 7. Status & next steps
 
-- Completed (P/R, 3 seeds): Qwen3-8B, Gemma-2-9B, Gemma-2-2B, Llama-3.2-3B, Mistral-7B-v0.3.
-- Running: Llama-3.1-8B (random), DeepSeek-LLM-7B (pretrained), DeepSeek-V2-Lite (pretrained), OLMo-2-7B/13B (P+R).
+- **Complete (P/R, 3 seeds): all 10 models** — Qwen3-8B, Llama-3.1-8B, Llama-3.2-3B, Gemma-2-9B, Gemma-2-2B, Mistral-7B-v0.3, DeepSeek-LLM-7B, OLMo-2-7B, OLMo-2-13B, DeepSeek-V2-Lite (MoE).
+- Real-world (Table D): 4 models extracted + 2 analysed so far (Gemma-2-2B 12/15 wins, Llama-3.2-3B 15/15 wins vs random, both with BH-FDR significance); extraction running for the remaining 5.
 - Remaining: real-world zero-shot routing for the new LMs (15 datasets, pretrained/random/feature/best-fixed/oracle + BH-FDR), 10-seed headline replication, native generation for the new LMs, 5-expert/local-rich sensitivity for the new LMs, final paper tables/figures.
 - Data-consistency notes: the random-init feature mismatch (bf16 vs fp32 construction) was found and fixed by re-extracting clean+OOD features in one consistent pass; the 40-window API diagnostic was changed to class-stratified sampling.

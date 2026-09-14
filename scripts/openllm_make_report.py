@@ -94,15 +94,15 @@ A("")
 A("| model | family | params | hidden | checkpoint | status |")
 A("|---|---|---:|---:|---|---|")
 inv=[("Qwen3-8B","Qwen","8.19B",4096,"Qwen/Qwen3-8B-Base (local)","P+R done"),
-     ("Llama-3.1-8B","Llama","8.0B",4096,"meta-llama/Llama-3.1-8B (rev d04e592)","P done, R running"),
+     ("Llama-3.1-8B","Llama","8.0B",4096,"meta-llama/Llama-3.1-8B (rev d04e592)","P+R done"),
      ("Llama-3.2-3B","Llama","3.2B",3072,"meta-llama/Llama-3.2-3B (rev 13afe51)","P+R done"),
      ("Gemma-2-9B","Gemma","9.2B",3584,"google/gemma-2-9b (rev 33c1930)","P+R done"),
      ("Gemma-2-2B","Gemma","2.6B",2304,"google/gemma-2-2b (rev c5ebcd4)","P+R done"),
-     ("DeepSeek-LLM-7B","DeepSeek","6.9B",4096,"deepseek-ai/deepseek-llm-7b-base (rev 7683fea)","R done, P running"),
+     ("DeepSeek-LLM-7B","DeepSeek","6.9B",4096,"deepseek-ai/deepseek-llm-7b-base (rev 7683fea)","P+R done"),
      ("Mistral-7B-v0.3","Mistral","7.2B",4096,"mistralai/Mistral-7B-v0.3 (rev caa1feb)","P+R done"),
-     ("OLMo-2-7B","OLMo","6.9B",4096,"allenai/OLMo-2-1124-7B (rev 7df9a82)","P+R running"),
-     ("OLMo-2-13B (P1)","OLMo","13B",5120,"allenai/OLMo-2-1124-13B (rev 3fefddc)","P+R running"),
-     ("DeepSeek-V2-Lite (MoE, P1)","DeepSeek","15.7B total / 2.4B active",2048,"deepseek-ai/DeepSeek-V2-Lite (rev 604d566)","R done, P running"),
+     ("OLMo-2-7B","OLMo","6.9B",4096,"allenai/OLMo-2-1124-7B (rev 7df9a82)","P+R done"),
+     ("OLMo-2-13B (P1)","OLMo","13B",5120,"allenai/OLMo-2-1124-13B (rev 3fefddc)","P+R done"),
+     ("DeepSeek-V2-Lite (MoE, P1)","DeepSeek","15.7B total / 2.4B active",2048,"deepseek-ai/DeepSeek-V2-Lite (rev 604d566)","P+R done"),
      ("Qwen3-0.6B / 1.7B","Qwen","0.6B / 1.7B",1024/2048,"Qwen3-0.6B / Qwen3-1.7B (local cache)","scale sweep done")]
 for r in inv: A("| "+" | ".join(str(x) for x in r)+" |")
 A("")
@@ -192,13 +192,16 @@ A("")
 # Mechanism + status
 A("## 6. Mechanism summary")
 A("")
-A("1. **Structure is accessible and transferable across families.** Under family-label supervision, pretrained ≻ random on "
-  "OOD compositional routing for every completed model (Qwen3-8B +31.1pp; Gemma-2-9B +19.9pp; Llama-3.2-3B +13.8pp; "
-  "Gemma-2-2B +13.3pp; Mistral-7B +10.7pp), and pretrained is also better on clean recognition, shuffle robustness and "
-  "numerical readout. The effect is therefore not Qwen-specific.")
-A("2. **The conversion to a decision is interface-dependent.** Under oracle-label supervision (target = expert with lowest "
-  "*realized-future* MSE) every completed model turns negative (Qwen −23.6pp; Mistral −16.5pp; Gemma-2-2B −13.3pp; "
-  "Llama-3.2-3B −10.8pp; Gemma-2-9B −5.6pp). The oracle target itself is unstable: family↔oracle agreement is only ~64% on "
+A("1. **Structure is accessible and transferable across families — 10/10 models.** Under family-label supervision, "
+  "pretrained ≻ random on OOD compositional routing for **every** evaluated base LM: Qwen3-8B +31.1pp; "
+  "DeepSeek-V2-Lite (MoE) +31.4pp; Llama-3.1-8B +22.8pp; Gemma-2-9B +20.0pp; Gemma-2-2B +15.0pp; Llama-3.2-3B +14.7pp; "
+  "Mistral-7B-v0.3 +10.6pp; OLMo-2-7B +9.4pp; OLMo-2-13B +8.3pp; DeepSeek-LLM-7B +7.5pp. The effect is therefore not "
+  "Qwen-specific; its magnitude varies by checkpoint/family.")
+A("2. **The conversion to a decision is interface-dependent — 10/10 models flip sign.** Under oracle-label supervision "
+  "(target = expert with lowest *realized-future* MSE) every model turns negative: DeepSeek-LLM-7B −21.4pp; "
+  "Qwen3-8B −19.5pp; Llama-3.1-8B −17.2pp; OLMo-2-13B −17.2pp; DeepSeek-V2-Lite −15.0pp; Gemma-2-2B −13.4pp; "
+  "Mistral-7B −13.0pp; Llama-3.2-3B −12.3pp; OLMo-2-7B −12.2pp; Gemma-2-9B −5.6pp. "
+  "The oracle target itself is unstable: family↔oracle agreement is only ~64% on "
   "clean windows, and changing the expert bank flips the winning family on 37–41% of OOD windows. So the mechanism result is: "
   "*pretrained representations organize a stable latent partition, not a realization-level expert choice.*")
 A("3. **Direct numerical generation fails on both paths.** Local base LMs produce forecasts 4–15× worse than the oracle expert; "
@@ -207,8 +210,10 @@ A("3. **Direct numerical generation fails on both paths.** Local base LMs produc
 A("")
 A("## 7. Status & next steps")
 A("")
-A("- Completed (P/R, 3 seeds): Qwen3-8B, Gemma-2-9B, Gemma-2-2B, Llama-3.2-3B, Mistral-7B-v0.3.")
-A("- Running: Llama-3.1-8B (random), DeepSeek-LLM-7B (pretrained), DeepSeek-V2-Lite (pretrained), OLMo-2-7B/13B (P+R).")
+A("- **Complete (P/R, 3 seeds): all 10 models** — Qwen3-8B, Llama-3.1-8B, Llama-3.2-3B, Gemma-2-9B, Gemma-2-2B, "
+  "Mistral-7B-v0.3, DeepSeek-LLM-7B, OLMo-2-7B, OLMo-2-13B, DeepSeek-V2-Lite (MoE).")
+A("- Real-world (Table D): 4 models extracted + 2 analysed so far (Gemma-2-2B 12/15 wins, Llama-3.2-3B 15/15 wins vs random, "
+  "both with BH-FDR significance); extraction running for the remaining 5.")
 A("- Remaining: real-world zero-shot routing for the new LMs (15 datasets, pretrained/random/feature/best-fixed/oracle + BH-FDR), "
   "10-seed headline replication, native generation for the new LMs, 5-expert/local-rich sensitivity for the new LMs, final "
   "paper tables/figures.")
