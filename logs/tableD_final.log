@@ -9,6 +9,7 @@ done llama32_3b
 done mistral_7b_v03
 done olmo2_13b
 done olmo2_7b
+done qwen3_8b_base
 wrote /9950backfile/chenjiahui/ARForecast-Diagnosis/results/open_llm_suite/raw/tableD_realworld.csv and /9950backfile/chenjiahui/ARForecast-Diagnosis/results/open_llm_suite/raw/tableD_realworld_stats.csv
 deepseek_llm_7b n_ds=15 mean P=15.2227 R=15.2977 feature=15.4155 oracle=14.6163 | P<R on 13/15
 deepseek_v2_lite n_ds=15 mean P=15.2192 R=15.4094 feature=15.4155 oracle=14.6163 | P<R on 14/15
@@ -19,3 +20,4 @@ llama32_3b     n_ds=15 mean P=15.0164 R=15.4514 feature=15.4155 oracle=14.6163 |
 mistral_7b_v03 n_ds=15 mean P=15.0939 R=15.5740 feature=15.4155 oracle=14.6163 | P<R on 13/15
 olmo2_13b      n_ds=15 mean P=15.0066 R=15.3790 feature=15.4155 oracle=14.6163 | P<R on 13/15
 olmo2_7b       n_ds=15 mean P=15.0602 R=15.3674 feature=15.4155 oracle=14.6163 | P<R on 13/15
+qwen3_8b_base  n_ds=15 mean P=15.4375 R=15.4703 feature=15.4155 oracle=14.6163 | P<R on 10/15

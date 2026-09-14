@@ -1,6 +1,7 @@
 """Generate docs/open_llm_final_report.md (paper-facing summary, all numbers from CSVs)."""
 from __future__ import annotations
 import csv
+import numpy as np
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -9,6 +10,21 @@ TAB = REPO / "results/open_llm_suite/tables/robustness_matrix.csv"
 RAW = REPO / "results/open_llm_suite/raw"
 
 rows = list(csv.DictReader(open(TAB)))
+LABEL_TO_KEY = {"Qwen3-8B": "qwen3_8b_base", "Llama-3.1-8B": "llama31_8b", "Llama-3.2-3B": "llama32_3b",
+                "Gemma-2-9B": "gemma2_9b", "Gemma-2-2B": "gemma2_2b", "Mistral-7B-v0.3": "mistral_7b_v03",
+                "DeepSeek-LLM-7B": "deepseek_llm_7b", "OLMo-2-7B": "olmo2_7b", "OLMo-2-13B": "olmo2_13b",
+                "DeepSeek-V2-Lite (MoE)": "deepseek_v2_lite"}
+
+# real-world ranges computed from Table D so the prose cannot drift from the numbers
+_td = list(csv.DictReader(open(RAW / "tableD_realworld.csv")))
+def _sub(key):
+    return [x for x in _td if x["model"] == key and x.get("random") not in (None, "") and float(x["random"])]
+_wins = [sum(1 for x in _sub(k) if float(x["pretrained"]) < float(x["random"]))
+         for k in LABEL_TO_KEY.values() if _sub(k)]
+_meds = [float(np.median([100 * (float(x["pretrained"]) - float(x["random"])) / float(x["random"]) for x in _sub(k)]))
+         for k in LABEL_TO_KEY.values() if _sub(k)]
+REAL_RANGE = f"{min(_wins)}–{max(_wins)}" if _wins else "n/a"
+REAL_MED = f"from {min(_meds):.0f}% to {max(_meds):.0f}%" if _meds else "n/a"
 nat = {r["model"]: r for r in csv.DictReader(open(REPO / "results/open_llm_suite/native/native_local.csv"))
        if r["init"] == "pretrained"}
 nat_by_label = {
@@ -68,9 +84,9 @@ A("2. **The conversion to a decision is interface-dependent (10/10 flip).** Re-l
   "with the realised-future best expert (`oracle-label`) turns the routing advantage negative for all ten models "
   "(−5.6 to −21.4pp). Family↔oracle agreement on clean windows is only ≈64%. Interpretation: pretraining organises "
   "a stable latent partition, not a realisation-level expert choice.")
-A("3. **The effect survives on real data (9/9 models).** Zero-shot routers (trained only on synthetic clean "
-  "primitives) beat matched random controls on 12–15 of 15 datasets per model, with BH-FDR significance on most; "
-  "median relative routed-MSE reductions of 12–28%. Pooled raw MSE across datasets is dominated by m4_hourly, "
+A("3. **The effect survives on real data (10/10 models).** Zero-shot routers (trained only on synthetic clean "
+  "primitives) beat matched random controls on " + REAL_RANGE + " of 15 datasets per model, with BH-FDR significance on most; "
+  "median relative routed-MSE change " + REAL_MED + ". Pooled raw MSE across datasets is dominated by m4_hourly, "
   "so relative per-dataset changes are the reportable quantity. The honest caveat: against the hand-crafted "
   "temporal-feature router the same models only win 8–11/15 with median ≈0 to −4%, i.e. the real-data result "
   "establishes an advantage over random initialisation, not over an engineered feature baseline.")

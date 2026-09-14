@@ -201,9 +201,11 @@ if Dsummary:
     with open(TD/"tableD_summary.csv","w",newline="") as f:
         w=csv.DictWriter(f,fieldnames=list(Dsummary[0].keys())); w.writeheader(); w.writerows(Dsummary)
 A("")
-A("Reading: every model beats its **matched random** control on 12–15/15 datasets with BH-FDR significance on most "
-  "(median relative routed-MSE reduction 12–28%). Against the hand-crafted **temporal-feature router** the picture is "
-  "much closer: wins 8–11/15, median relative difference ≈0 to −4%. So on real data the pretrained LM advantage over "
+_w=[int(r["wins_vs_random"].split("/")[0]) for r in Dsummary]; _wf=[int(r["wins_vs_feature"].split("/")[0]) for r in Dsummary]
+_m=[r["median_pct_vs_random"] for r in Dsummary]; _mf=[r["median_pct_vs_feature"] for r in Dsummary]
+A(f"Reading: every model beats its **matched random** control on {min(_w)}–{max(_w)}/15 datasets with BH-FDR significance on most "
+  f"(median relative routed-MSE change {min(_m):.0f}% to {max(_m):.0f}%). Against the hand-crafted **temporal-feature router** the picture is "
+  f"much closer: wins {min(_wf)}–{max(_wf)}/15, median relative difference {min(_mf):.1f}% to {max(_mf):.1f}%. So on real data the pretrained LM advantage over "
   "random initialisation is robust, while the advantage over a simple engineered feature baseline is not established. "
   "Fairness caveat: these LMs are 3–15B parameters, the random control is the identical architecture, and no real-data "
   "fine-tuning or threshold tuning is performed (strict zero-shot decision transfer).")

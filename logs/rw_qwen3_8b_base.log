@@ -1,0 +1,35 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: '/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torchvision/image.so: undefined symbol: _ZN3c1017RegisterOperatorsD1Ev'If you don't plan on using image functionality from `torchvision.io`, you can ignore this warning. Otherwise, there might be something wrong with your environment. Did you have `libjpeg` or `libpng` installed before building `torchvision` from source?
+  warn(
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:29<01:59, 29.88s/it]Loading checkpoint shards:  40%|████      | 2/5 [00:58<01:27, 29.25s/it]Loading checkpoint shards:  60%|██████    | 3/5 [02:03<01:31, 45.70s/it]Loading checkpoint shards:  80%|████████  | 4/5 [02:41<00:42, 42.29s/it]Loading checkpoint shards: 100%|██████████| 5/5 [03:00<00:00, 34.15s/it]Loading checkpoint shards: 100%|██████████| 5/5 [03:00<00:00, 36.15s/it]
+[qwen3_8b_base/pretrained/electricity] (300, 4096)
+[qwen3_8b_base/pretrained/etth1] (300, 4096)
+[qwen3_8b_base/pretrained/etth2] (300, 4096)
+[qwen3_8b_base/pretrained/ettm1] (300, 4096)
+[qwen3_8b_base/pretrained/ettm2] (300, 4096)
+[qwen3_8b_base/pretrained/exchange_rate] (300, 4096)
+[qwen3_8b_base/pretrained/illness] (211, 4096)
+[qwen3_8b_base/pretrained/m4_daily] (300, 4096)
+[qwen3_8b_base/pretrained/m4_hourly] (300, 4096)
+[qwen3_8b_base/pretrained/m4_monthly] (300, 4096)
+[qwen3_8b_base/pretrained/m4_quarterly] (271, 4096)
+[qwen3_8b_base/pretrained/m4_weekly] (300, 4096)
+[qwen3_8b_base/pretrained/m4_yearly] (120, 4096)
+[qwen3_8b_base/pretrained/traffic] (300, 4096)
+[qwen3_8b_base/pretrained/weather] (300, 4096)
+[qwen3_8b_base/random/electricity] (300, 4096)
+[qwen3_8b_base/random/etth1] (300, 4096)
+[qwen3_8b_base/random/etth2] (300, 4096)
+[qwen3_8b_base/random/ettm1] (300, 4096)
+[qwen3_8b_base/random/ettm2] (300, 4096)
+[qwen3_8b_base/random/exchange_rate] (300, 4096)
+[qwen3_8b_base/random/illness] (211, 4096)
+[qwen3_8b_base/random/m4_daily] (300, 4096)
+[qwen3_8b_base/random/m4_hourly] (300, 4096)
+[qwen3_8b_base/random/m4_monthly] (300, 4096)
+[qwen3_8b_base/random/m4_quarterly] (271, 4096)
+[qwen3_8b_base/random/m4_weekly] (300, 4096)
+[qwen3_8b_base/random/m4_yearly] (120, 4096)
+[qwen3_8b_base/random/traffic] (300, 4096)
+[qwen3_8b_base/random/weather] (300, 4096)
