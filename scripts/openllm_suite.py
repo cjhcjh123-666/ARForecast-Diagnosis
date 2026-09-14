@@ -16,6 +16,16 @@ from __future__ import annotations
 import argparse, csv, json, math, re, sys, time
 from pathlib import Path
 import numpy as np, torch, torch.nn as nn
+# some envs ship a broken torchaudio; transformers imports it lazily -> stub if broken
+try:
+    import torchaudio  # noqa: F401
+except Exception:
+    import types as _types
+    _ta=_types.ModuleType("torchaudio"); _ta.__file__="<torchaudio-stub>"
+    import importlib.machinery as _im
+    _ta.__spec__=_im.ModuleSpec("torchaudio", loader=None)
+    _ta.__version__="0.0.0-stub"
+    import sys as _sys; _sys.modules.setdefault("torchaudio", _ta)
 REPO=Path(__file__).resolve().parents[1]
 if str(REPO) not in sys.path: sys.path.insert(0,str(REPO))
 from analysis.linear_probe import accuracy, softmax_predict, softmax_regression
@@ -53,20 +63,32 @@ def resolve_path(model_id, cache="/9950backfile/chenjiahui/hf_cache/hub", local=
 
 def load_lm(path, init, seed, device, trust_remote_code=True):
     import transformers.modeling_utils as _mu
-    if not isinstance(_mu.ALL_PARALLEL_STYLES,(set,frozenset)):
-        _mu.ALL_PARALLEL_STYLES=frozenset({"tp","block","sharded","pp","sequence","rowwise","colwise","naive","serial","manual","flex","ddp"})
+    if hasattr(_mu,"ALL_PARALLEL_STYLES") and not isinstance(_mu.ALL_PARALLEL_STYLES,(set,frozenset)):
+        _mu.ALL_PARALLEL_STYLES=frozenset({"tp","block","sharded","pp","sequence","rowwise","colwise",
+            "naive","serial","manual","flex","ddp","colwise_rep","rowwise_rep","colwise_sharded",
+            "rowwise_sharded","local_colwise","local_rowwise","gather","local","replicate"})
     from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
     tok=AutoTokenizer.from_pretrained(path, trust_remote_code=trust_remote_code)
     if tok.pad_token_id is None: tok.pad_token=tok.eos_token
     if init=="random":
         torch.manual_seed(seed)
         cfg=AutoConfig.from_pretrained(path, trust_remote_code=trust_remote_code)
-        model=AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code)
-        model=model.to(torch.bfloat16)
+        try:
+            # build directly in bf16 to avoid a large fp32 CPU copy (OOM-prone for >=3B)
+            model=AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code, torch_dtype=torch.bfloat16)
+        except TypeError:
+            model=AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code).to(torch.bfloat16)
     else:
         dev=int(device.split(":")[1]) if ":" in device else 0
-        model=AutoModelForCausalLM.from_pretrained(path, trust_remote_code=trust_remote_code,
-              torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map={"":dev})
+        try:
+            model=AutoModelForCausalLM.from_pretrained(path, trust_remote_code=trust_remote_code,
+                  torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map={"":dev})
+        except ValueError as e:
+            if "attention" in str(e).lower() or "sdpa" in str(e).lower() or "colwise" in str(e).lower():
+                model=AutoModelForCausalLM.from_pretrained(path, trust_remote_code=trust_remote_code,
+                      torch_dtype=torch.bfloat16, attn_implementation="eager", device_map={"":dev})
+            else:
+                raise
     return model.to(device).eval(), tok
 
 @torch.inference_mode()
