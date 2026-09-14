@@ -90,6 +90,7 @@ Reading: every model beats its **matched random** control on 12–15/15 datasets
 | model | pretrained parse | pretrained native MSE | MSE / oracle | MSE / best-fixed | random parse |
 |---|---:|---:|---:|---:|---:|
 | deepseek_llm_7b | 1.000 | 1.388 | 4.13 | 1.94 | 0.000 |
+| deepseek_v2_lite | 0.975 | 3.924 | 11.69 | 5.48 | 0.000 |
 | gemma2_2b | 1.000 | 3.218 | 9.59 | 4.50 | 0.000 |
 | gemma2_9b | 0.875 | 2.946 | 8.78 | 4.12 | 0.000 |
 | llama31_8b | 1.000 | 2.992 | 8.91 | 4.18 | 0.000 |

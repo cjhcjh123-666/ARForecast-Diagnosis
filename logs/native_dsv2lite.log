@@ -10,3 +10,4 @@ The following generation flags are not valid and may be ignored: ['temperature',
 The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
 The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
 {'model': 'deepseek_v2_lite', 'init': 'pretrained', 'seed': 7, 'n': 40, 'parse_rate': 0.975, 'native_mse': 3.924, 'oracle_mse': 0.3357, 'persistence_mse': 1.3051, 'best_fixed_mse': 0.7158, 'context_router_mse': 0.782}
+{'model': 'deepseek_v2_lite', 'init': 'random', 'seed': 7, 'n': 40, 'parse_rate': 0.0, 'native_mse': '', 'oracle_mse': 0.3357, 'persistence_mse': 1.3051, 'best_fixed_mse': 0.7158, 'context_router_mse': 0.782}
