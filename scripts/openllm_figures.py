@@ -198,8 +198,20 @@ def d_rel_wins(model):
 def five_expert_delta(model, test="bal3"):
     """mean over seeds of (pretrained - random) balanced accuracy of the 5-expert router.
 
-    NOTE: tableB_openllm.csv stores ABSOLUTE balanced accuracies (chance = 1/5), not deltas.
+    Prefers the full 10-model table (tableB_all.csv); the older 3-model tableB_openllm.csv
+    stores ABSOLUTE balanced accuracies (chance = 1/5), not deltas.
     """
+    full = RAW / "tableB_all.csv"
+    if full.is_file():
+        R = [r for r in csv.DictReader(open(full)) if r["model"] == model and r["test"] == test]
+        out = {}
+        for seed in ("7", "17", "27"):
+            p5 = [num(r["family5"]) for r in R if r["seed"] == seed and r["init"] == "pretrained"]
+            q5 = [num(r["family5"]) for r in R if r["seed"] == seed and r["init"] == "random"]
+            if p5 and q5 and p5[0] == p5[0] and q5[0] == q5[0]:
+                out[seed] = p5[0] - q5[0]
+        if out:
+            return out
     tb5f = RAW / "tableB_openllm.csv"
     if not tb5f.is_file():
         return {}
@@ -225,6 +237,17 @@ for model, label in LMS:
         f3n = per_seed_delta(OPEN_D, model, "C_family_bal3n", "balanced_accuracy")
         mlp = per_seed_delta(OPEN_D, model, "R_mlp_bal3", "balanced_accuracy")
     f5 = five_expert_delta(model)
+    mlp_delta = {}
+    rcf = RAW / "router_capacity_all.csv"
+    if rcf.is_file():
+        R = [r for r in csv.DictReader(open(rcf)) if r["model"] == model]
+        for seed in ("7", "17", "27"):
+            p0 = [num(r["mlp64"]) for r in R if r["seed"] == seed and r["init"] == "pretrained"]
+            q0 = [num(r["mlp64"]) for r in R if r["seed"] == seed and r["init"] == "random"]
+            if p0 and q0 and p0[0] == p0[0] and q0[0] == q0[0]:
+                mlp_delta[seed] = p0[0] - q0[0]
+    if mlp_delta:
+        mlp = mlp_delta
     w, n, med = d_rel_wins(model) if model in {r["model"] for r in d} else (np.nan, 0, np.nan)
     nm = natval(model, "pretrained", "native_mse"); orc_mse = natval(model, "pretrained", "oracle_mse")
     rows.append(dict(
@@ -243,6 +266,110 @@ with open(TAB / "robustness_matrix.csv", "w", newline="") as f:
 print("wrote robustness_matrix.csv")
 for r in rows:
     print(r)
+
+
+# ---------------- Figure E: model scale + 10-seed stability, Figure F: dimension matching ----------------
+try:
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    ss = REPO / "results/open_llm_suite/raw/scale_sweep.csv"
+    ts = REPO / "results/open_llm_suite/raw/ten_seed_headline.csv"
+    dmp = REPO / "results/open_llm_suite/raw/dimension_matching.csv"
+    if ss.is_file() and ts.is_file():
+        S = list(csv.DictReader(open(ss))); T = list(csv.DictReader(open(ts)))
+        order = {"qwen3_0.6b": 0, "qwen3_1.7b": 1, "qwen3_8b_base": 2}
+        S = sorted(S, key=lambda r: order.get(r["model"], 9))
+        fig, axes = plt.subplots(1, 2, figsize=(9.4, 3.4))
+        ax = axes[0]
+        x = np.arange(len(S))
+        ax.bar(x, [float(r["delta"]) for r in S],
+               yerr=[[float(r["delta"]) - float(r["ci_lo"]) for r in S],
+                     [float(r["ci_hi"]) - float(r["delta"]) for r in S]],
+               color="#1f77b4", capsize=4)
+        ax.set_xticks(x); ax.set_xticklabels([f"{r['params']}\n({r['hidden']}-d)" for r in S], fontsize=7)
+        ax.set_ylabel("$\\Delta$BA (pretrained − random)"); ax.set_xlabel("Qwen3 checkpoint size")
+        ax.set_title("Scale sweep (seeds 7/17/27)", fontsize=8); ax.grid(axis="y", alpha=0.3)
+        ax2 = axes[1]
+        for i, r in enumerate(T):
+            per = [float(v.split(":")[1]) for v in r["per_seed"].split(";")]
+            ax2.plot(range(1, len(per) + 1), per, marker="o", ms=4,
+                     label=f"{r['test']} (mean {float(r['delta']):+.3f})")
+        ax2.axhline(0, color="gray", ls="--", lw=1)
+        ax2.set_xticks(range(1, 11)); ax2.set_xlabel("seed index (7,17,27,37,…,97)")
+        ax2.set_ylabel("$\\Delta$BA"); ax2.legend(fontsize=6)
+        ax2.set_title("Qwen3-8B headline: 10 seeds", fontsize=8); ax2.grid(alpha=0.3)
+        fig.tight_layout(); fig.savefig(FIG / "figE_scale_and_seeds.png", dpi=200)
+        fig.savefig(FIG / "figE_scale_and_seeds.pdf")
+        print("wrote figE_scale_and_seeds.png/pdf")
+    if dmp.is_file():
+        D = list(csv.DictReader(open(dmp)))
+        fig, ax = plt.subplots(figsize=(6.6, 3.8))
+        for model in sorted({r["model"] for r in D}):
+            dims = sorted({int(r["dim"]) for r in D if r["model"] == model and r["proj"] == "randproj"})
+            ys = []
+            for d0 in dims:
+                p0 = [float(r["ba"]) for r in D if r["model"] == model and r["proj"] == "randproj" and int(r["dim"]) == d0 and r["init"] == "pretrained"]
+                r0 = [float(r["ba"]) for r in D if r["model"] == model and r["proj"] == "randproj" and int(r["dim"]) == d0 and r["init"] == "random"]
+                ys.append(np.mean(p0) - np.mean(r0))
+            ax.plot(dims, ys, marker="o", ms=3, lw=1.2, label=model)
+        ax.set_xscale("log", base=2)
+        ax.axhline(0, color="gray", ls="--", lw=1)
+        ax.set_xlabel("random-projection width (dims)"); ax.set_ylabel("$\\Delta$BA")
+        ax.set_title("Dimension matching: advantage survives projection to 64–2048 dims", fontsize=8)
+        ax.legend(fontsize=6, ncol=2); ax.grid(alpha=0.3)
+        fig.tight_layout(); fig.savefig(FIG / "figF_dimension_matching.png", dpi=200)
+        fig.savefig(FIG / "figF_dimension_matching.pdf")
+        print("wrote figF_dimension_matching.png/pdf")
+except Exception as e:  # noqa: BLE001
+    print("figures E/F failed:", e)
+
+
+# ---------------- Figure G: oracle-target stability ----------------
+try:
+    import matplotlib; matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    osf = REPO / "results/open_llm_suite/raw/oracle_stability.csv"
+    osr = REPO / "results/open_llm_suite/raw/oracle_stability_routing.csv"
+    if osf.is_file():
+        R = list(csv.DictReader(open(osf)))
+        prim = [r for r in R if int(r["kind"]) < 3]
+        fig, axes = plt.subplots(1, 3, figsize=(11.5, 3.2))
+        ax = axes[0]
+        st = np.array([float(r["stability"]) for r in R])
+        ax.hist(st, bins=np.linspace(0.3, 1.0, 15), color="#1f77b4")
+        ax.set_xlabel("oracle-label stability $s(x)$"); ax.set_ylabel("# windows")
+        ax.set_title(f"K=20 future resamples (n={len(R)})", fontsize=8)
+        ax = axes[1]
+        buckets = [(0.0, 0.6), (0.6, 0.8), (0.8, 0.9), (0.9, 0.99), (0.99, 1.01)]
+        vals, labs = [], []
+        for lo, hi in buckets:
+            sub = [float(r["single_is_majority"]) for r in prim if lo <= float(r["stability"]) < hi]
+            vals.append(np.mean(sub) if sub else np.nan); labs.append(f"{lo:.2f}-{hi:.2f}\n(n={len(sub)})")
+        ax.bar(range(len(vals)), vals, color="#2ca02c"); ax.set_ylim(0, 1.05)
+        ax.set_xticks(range(len(vals))); ax.set_xticklabels(labs, fontsize=6)
+        ax.set_ylabel("P(single-future winner = majority winner)")
+        ax.set_title("label flips concentrate in near-ties", fontsize=8)
+        ax = axes[2]
+        if osr.is_file():
+            RR = list(csv.DictReader(open(osr)))
+            names = ["family", "single_oracle", "expected_risk"]
+            xs = np.arange(len(names))
+            for m in sorted({r["model"] for r in RR}):
+                ys = []
+                for nm in names:
+                    p0 = [float(r[nm]) for r in RR if r["model"] == m and r["test"] == "bal3" and r["init"] == "pretrained"]
+                    r0 = [float(r[nm]) for r in RR if r["model"] == m and r["test"] == "bal3" and r["init"] == "random"]
+                    ys.append(np.mean(p0) - np.mean(r0))
+                ax.plot(xs, ys, marker="o", ms=4, label=m)
+            ax.set_xticks(xs); ax.set_xticklabels(["family", "single-future\noracle", "expected-risk\noracle"], fontsize=7)
+            ax.axhline(0, color="gray", ls="--", lw=1); ax.legend(fontsize=5)
+            ax.set_ylabel("$\\Delta$BA (bal3)")
+            ax.set_title("supervision interface decides the sign", fontsize=8)
+        fig.tight_layout(); fig.savefig(FIG / "figG_oracle_stability.png", dpi=200)
+        fig.savefig(FIG / "figG_oracle_stability.pdf")
+        print("wrote figG_oracle_stability.png/pdf")
+except Exception as e:  # noqa: BLE001
+    print("figure G failed:", e)
 
 # ---------------- Figure B: decision-interface robustness heatmap ----------------
 try:

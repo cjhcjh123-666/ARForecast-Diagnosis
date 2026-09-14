@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 REPO=Path(__file__).resolve().parents[1]
 OUT=REPO/"docs/open_llm_all_results.md"
+RAW=REPO/"results/open_llm_suite/raw"
 TD=REPO/"results/open_llm_suite/tables"; TD.mkdir(parents=True,exist_ok=True)
 
 # ---------- collect new-LM per-run CSVs ----------
@@ -85,7 +86,7 @@ A("- Representation = **final layer, final non-padding token**; frozen backbone 
 A("- **pretrained** = released base checkpoint; **random** = same architecture constructed from config with native "
   "initializers and **no released weights** (per-tensor audit: 0 tensors equal to pretrained).")
 A("- Router trains only on the **270 clean trend/periodic/local windows**; OOD sets are the frozen balanced sets "
-  "`bal3` (60/60/60 T/P/L, AR-weak-sine local source) and `bal3n` (periodic+AR local source).")
+  "`bal3` (120 windows, 40/40/40 T/P/L, AR-weak-sine local source) and `bal3n` (120 windows, periodic+AR local source).")
 A("- Two supervision interfaces: **family-label** (predict the generating family; original E4 protocol) and "
   "**oracle-label** (predict the expert with lowest realized-future MSE on the clean windows).")
 A("")
@@ -211,7 +212,153 @@ A(f"Reading: every model beats its **matched random** control on {min(_w)}–{ma
   "fine-tuning or threshold tuning is performed (strict zero-shot decision transfer).")
 A("")
 
+# ---------- Table B / router capacity / dimension matching / pooling / scale ----------
+def read_csv(name):
+    f = RAW / name
+    return list(csv.DictReader(open(f))) if f.is_file() else []
+TB = read_csv("tableB_all.csv"); RC = read_csv("router_capacity_all.csv")
+DM = read_csv("dimension_matching.csv"); PS = read_csv("pooling_sensitivity.csv")
+SS = read_csv("scale_sweep.csv"); TS = read_csv("ten_seed_headline.csv")
+def avg(rows, key, **cond):
+    v = [float(r[key]) for r in rows if all(r.get(k) == val for k, val in cond.items()) and r.get(key) not in (None, "")]
+    return float(np.mean(v)) if v else float("nan")
+A("## 4c. Decision-interface and representation-geometry robustness")
+A("")
+if TB:
+    A("### Table B — 3-expert vs 5-expert decision definition (family-label, bal3 OOD)")
+    A("")
+    A("The 5-expert bank adds a trend+seasonal hybrid and an AR(10)/ridge expert; the router supervision is unchanged "
+      "(family label on the 270 clean primitives). `family5` maps the 5-expert winner back to the 3 primitive families.")
+    A("")
+    A("| model | 3-expert P/R | 3-expert Δ | 5-expert P/R | 5-expert Δ | oracle-label Δ | margin (best/2nd) |")
+    A("|---|---:|---:|---:|---:|---:|---:|")
+    for m, label in [(k, k) for k in sorted({r["model"] for r in TB})]:
+        f3p = avg(TB, "family3", model=m, init="pretrained", test="bal3"); f3r = avg(TB, "family3", model=m, init="random", test="bal3")
+        f5p = avg(TB, "family5", model=m, init="pretrained", test="bal3"); f5r = avg(TB, "family5", model=m, init="random", test="bal3")
+        o3p = avg(TB, "oracle3", model=m, init="pretrained", test="bal3"); o3r = avg(TB, "oracle3", model=m, init="random", test="bal3")
+        mg = avg(TB, "margin_mean", model=m, init="pretrained", test="bal3")
+        A(f"| {label} | {fmt(f3p)}/{fmt(f3r)} | **{fmt(f3p-f3r,3).replace('nan','—')}** | {fmt(f5p)}/{fmt(f5r)} | "
+          f"{fmt(f5p-f5r,3)} | {fmt(o3p-o3r,3)} | {fmt(mg,2)} |")
+    A("")
+if RC:
+    A("### Router capacity — linear vs 2-layer MLP64 (family-label, bal3)")
+    A("")
+    A("| model | linear P/R | linear Δ | MLP64 P/R | MLP64 Δ |")
+    A("|---|---:|---:|---:|---:|")
+    for m in sorted({r["model"] for r in RC}):
+        lp = avg(RC, "linear", model=m, init="pretrained"); lr = avg(RC, "linear", model=m, init="random")
+        mp = avg(RC, "mlp64", model=m, init="pretrained"); mr = avg(RC, "mlp64", model=m, init="random")
+        A(f"| {m} | {fmt(lp)}/{fmt(lr)} | {fmt(lp-lr,3)} | {fmt(mp)}/{fmt(mr)} | {fmt(mp-mr,3)} |")
+    A("")
+    A("Reading: a nonlinear router does not remove the pretrained advantage — for every model the MLP64 Δ has the same "
+      "sign as the linear Δ (usually larger), so the effect is not an artefact of linear accessibility.")
+    A("")
+if DM:
+    A("### Dimension matching (bal3 ΔBA pretrained − random after projection)")
+    A("")
+    A("`full` = no projection (reference, must agree with the main table). `randproj` = Gaussian random projection "
+      "(Johnson–Lindenstrauss, preserves geometry at any width). `pca` = PCA fitted on the 270 training windows only "
+      "(above dim ≈ 270 it degenerates to the same rank-270 projection, so only ≤256 is reported).")
+    A("")
+    A("| model | full | randproj 64 | 128 | 256 | 384 | 512 | 768 | 1024 | 2048 | pca 32/64/128/256 |")
+    A("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|")
+    for m in sorted({r["model"] for r in DM}):
+        def d(proj, dim):
+            p = avg(DM, "ba", model=m, proj=proj, dim=str(dim), init="pretrained")
+            r = avg(DM, "ba", model=m, proj=proj, dim=str(dim), init="random")
+            return p - r if p == p and r == r else float("nan")
+        rp = " | ".join(fmt(d("randproj", x), 3) for x in [64, 128, 256, 384, 512, 768, 1024, 2048])
+        pc = "/".join(fmt(d("pca", x), 2) for x in [32, 64, 128, 256])
+        full_d = avg(DM,'ba',model=m,proj='full',init='pretrained') - avg(DM,'ba',model=m,proj='full',init='random')
+        A(f"| {m} | {fmt(full_d,3)} | {rp} | {pc} |")
+    A("")
+if PS:
+    A("### Pooling sensitivity (last non-pad token vs mean over non-pad states)")
+    A("")
+    A("| model | pooling | clean acc P/R | family-label bal3 P/R | Δ |")
+    A("|---|---:|---:|---:|---:|")
+    for m in sorted({r["model"] for r in PS}):
+        for pool in ["last", "mean"]:
+            cp = avg(PS, "clean_acc", model=m, pooling=pool, init="pretrained"); cr = avg(PS, "clean_acc", model=m, pooling=pool, init="random")
+            fp = avg(PS, "family_ba_bal3", model=m, pooling=pool, init="pretrained"); fr = avg(PS, "family_ba_bal3", model=m, pooling=pool, init="random")
+            A(f"| {m} | {pool} | {fmt(cp)}/{fmt(cr)} | {fmt(fp)}/{fmt(fr)} | {fmt(fp-fr,3)} |")
+    A("")
+if SS or TS:
+    A("### Model scale (Qwen3 family) and 10-seed headline stability")
+    A("")
+    if SS:
+        A("| model | params | hidden | seeds | ΔBA (bal3) | sd | 95% CI | per seed |")
+        A("|---|---:|---:|---:|---:|---:|---|---|")
+        for r in SS:
+            A(f"| {r['model']} | {r['params']} | {r['hidden']} | {r['n_seeds']} | **{float(r['delta']):+.3f}** | {float(r['std']):.3f} | "
+              f"[{float(r['ci_lo']):+.3f},{float(r['ci_hi']):+.3f}] | {r['per_seed']} |")
+        A("")
+        A("Scale is **not** monotone: 0.6B +0.175, 1.7B +0.158, 8B +0.311 — the two small models are statistically "
+          "indistinguishable from each other, and only 8B separates clearly.")
+        A("")
+    if TS:
+        A("| test set | seeds | ΔBA | sd | 95% CI | per-seed Δ |")
+        A("|---|---:|---:|---:|---|---|")
+        for r in TS:
+            A(f"| {r['test']} | {r['n_seeds']} | **{float(r['delta']):+.3f}** | {float(r['std']):.3f} | "
+              f"[{float(r['ci_lo']):+.3f},{float(r['ci_hi']):+.3f}] | {r['per_seed']} |")
+        A("")
+        A("All 10 headline seeds are positive on both OOD sets, so the effect is not a seed artefact of seeds 7/17/27.")
+        A("")
 # Table E: generation
+OS = RAW / "oracle_stability.csv"
+if OS.is_file():
+    OSrows = list(csv.DictReader(open(OS)))
+    _st = np.array([float(r["stability"]) for r in OSrows])
+    _prim = [r for r in OSrows if int(r["kind"]) < 3]
+    _maj = np.array([float(r["single_is_majority"]) for r in _prim])
+    _hi = np.array([float(r["single_is_majority"]) for r in _prim if float(r["stability"]) > 0.8])
+    _lo = np.array([float(r["single_is_majority"]) for r in _prim if float(r["stability"]) <= 0.8])
+    _mg = np.array([float(r["margin"]) for r in _prim])
+    A("## 4d. Oracle-target stability — is the realised-future label a stable target?")
+    A("")
+    A("For every synthetic window the latent process **and** the realised context are held fixed and the future noise is "
+      "resampled K=20 times, giving $p_j(x)=P(\\text{expert } j \\text{ wins})$, stability $s(x)=\\max_j p_j(x)$ and the "
+      "expected-risk (majority) label $\\arg\\max_j p_j(x)$. The traced replay is asserted to reproduce the frozen "
+      "futures used by every other experiment.")
+    A("")
+    A("| quantity | value |")
+    A("|---|---|")
+    A(f"| windows analysed | {len(OSrows)} |")
+    A(f"| mean stability $s(x)$ | {_st.mean():.3f} |")
+    A(f"| single dominant winner ($s=1$) | {100*np.mean(_st==1.0):.1f}% |")
+    A(f"| $s \\ge 0.8$ | {100*np.mean(_st>=0.8):.1f}% |")
+    A(f"| contested ($s \\le 0.6$) | {100*np.mean(_st<=0.6):.1f}% |")
+    A(f"| primitive windows where single-future winner = majority winner | {100*_maj.mean():.1f}% |")
+    A(f"| ... restricted to stable windows ($s>0.8$) | {100*_hi.mean():.1f}% |")
+    A(f"| ... restricted to unstable windows ($s \\le 0.8$) | {100*_lo.mean():.1f}% |")
+    A(f"| majority winner = true family | {100*np.mean([float(r['majority_matches_family']) for r in _prim]):.1f}% |")
+    A(f"| single-future winner = true family | {100*np.mean([float(r['single_matches_family']) for r in _prim]):.1f}% |")
+    A(f"| expert-risk margin (2nd/1st): median / within 1.1x | {np.median(_mg):.2f} / {100*np.mean(_mg<1.1):.1f}% |")
+    A("")
+    A("Reading: the realised future is not a noisy label on most windows, but it flips on ~15% of them, and the flips "
+      "concentrate exactly in the near-tie windows the mechanism predicts (99% agreement where the winner is stable vs "
+      "53% where it is contested). The expected-risk label is also closer to the latent family than the single-future "
+      "label, which is why it is the right sensitivity control for the oracle-label routing column.")
+    A("")
+    OSR = RAW / "oracle_stability_routing.csv"
+    if OSR.is_file():
+        RR = list(csv.DictReader(open(OSR)))
+        A("| model | test | family-label Δ | single-future oracle Δ | expected-risk oracle Δ |")
+        A("|---|---:|---:|---:|---:|")
+        for m in sorted({r["model"] for r in RR}):
+            for tag in ["bal3", "bal3n"]:
+                def g(name, init):
+                    v = [float(r[name]) for r in RR if r["model"] == m and r["test"] == tag and r["init"] == init]
+                    return float(np.mean(v)) if v else float("nan")
+                if g("family", "pretrained") == g("family", "pretrained"):
+                    A(f"| {m} | {tag} | {g('family','pretrained')-g('family','random'):+.3f} | "
+                      f"{g('single_oracle','pretrained')-g('single_oracle','random'):+.3f} | "
+                      f"{g('expected_risk','pretrained')-g('expected_risk','random'):+.3f} |")
+        A("")
+        A("This is the decisive control: swapping the noisy single-future label for the expected-risk (majority) label "
+          "tests whether the negative oracle column is a label-noise artefact or a genuine interface effect.")
+        A("")
 A("## 5. Table E — Direct numerical generation (native + API)")
 A("")
 A("### 5.1 Local base LMs (greedy, historical prompt/parser; native generation)")

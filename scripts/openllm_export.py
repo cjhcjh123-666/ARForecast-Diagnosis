@@ -153,5 +153,54 @@ if native.is_file():
         lines.append(f"{label} & {f(num(r['parse_rate']), 3)} & {f(nm, 3)} & {f(nm/orc, 2) if nm == nm else '--'} & "
                      f"{f(nm/bf, 2) if nm == nm else '--'} \\\\")
 lines += ["\\bottomrule", "\\end{tabular}", ""]
+
+# ---- Table B (5-expert), router capacity, dimension matching, scale, 10 seeds ----
+def read_csv(name):
+    f = RAW / name
+    return list(csv.DictReader(open(f))) if f.is_file() else []
+def avg(rows, key, **cond):
+    v = [float(r[key]) for r in rows if all(r.get(k) == val for k, val in cond.items()) and r.get(key) not in (None, "")]
+    return float(np.mean(v)) if v else np.nan
+
+TB = read_csv("tableB_all.csv"); RC = read_csv("router_capacity_all.csv")
+DM = read_csv("dimension_matching.csv"); SS = read_csv("scale_sweep.csv"); TS = read_csv("ten_seed_headline.csv")
+KEY = {v: k for k, v in LMS}
+if TB:
+    lines += ["% Table B: decision definition (3 vs 5 experts) and router capacity",
+              "\\begin{tabular}{lrrrrr}", "\\toprule",
+              "Model & 3-exp $\\Delta$ & 5-exp $\\Delta$ & oracle $\\Delta$ & linear $\\Delta$ & MLP64 $\\Delta$ \\\\",
+              "\\midrule"]
+    for label, key in KEY.items():
+        f3 = avg(TB, "family3", model=key, init="pretrained", test="bal3") - avg(TB, "family3", model=key, init="random", test="bal3")
+        f5 = avg(TB, "family5", model=key, init="pretrained", test="bal3") - avg(TB, "family5", model=key, init="random", test="bal3")
+        o3 = avg(TB, "oracle3", model=key, init="pretrained", test="bal3") - avg(TB, "oracle3", model=key, init="random", test="bal3")
+        li = avg(RC, "linear", model=key, init="pretrained") - avg(RC, "linear", model=key, init="random") if RC else np.nan
+        ml = avg(RC, "mlp64", model=key, init="pretrained") - avg(RC, "mlp64", model=key, init="random") if RC else np.nan
+        lines.append("%s & %s & %s & %s & %s & %s \\\\" % (label, f(f3), f(f5), f(o3), f(li), f(ml)))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+if DM:
+    dims = [64, 128, 256, 384, 512, 768, 1024, 2048]
+    lines += ["% Dimension matching: $\\Delta$BA after random projection to a common width",
+              "\\begin{tabular}{l%s}" % ("r" * len(dims)), "\\toprule",
+              "Model & " + " & ".join(str(d0) for d0 in dims) + " \\\\", "\\midrule"]
+    for label, key in KEY.items():
+        vals = []
+        for d0 in dims:
+            p0 = avg(DM, "ba", model=key, proj="randproj", dim=str(d0), init="pretrained")
+            r0 = avg(DM, "ba", model=key, proj="randproj", dim=str(d0), init="random")
+            vals.append(f(p0 - r0) if p0 == p0 and r0 == r0 else "--")
+        lines.append("%s & %s \\\\" % (label, " & ".join(vals)))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+if SS or TS:
+    lines += ["% Scale sweep and 10-seed headline stability (Qwen3)",
+              "\\begin{tabular}{lrrr}", "\\toprule",
+              "Run & params & seeds & $\\Delta$BA (95\\% CI) \\\\", "\\midrule"]
+    for r in SS:
+        lines.append("%s & %s & %s & $%+.3f$ [%+.3f,%+.3f] \\\\" % (r["model"], r["params"], r["n_seeds"],
+                     float(r["delta"]), float(r["ci_lo"]), float(r["ci_hi"])))
+    for r in TS:
+        lines.append("qwen3-8b (%s, 10 seeds) & 8.2B & %s & $%+.3f$ [%+.3f,%+.3f] \\\\" % (r["test"], r["n_seeds"],
+                     float(r["delta"]), float(r["ci_lo"]), float(r["ci_hi"])))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
 (OUT / "paper_tables.tex").write_text("\n".join(lines) + "\n")
 print("wrote paper_tables.tex")

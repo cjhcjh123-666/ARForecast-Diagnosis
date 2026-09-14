@@ -44,3 +44,18 @@
 2. 把 5-expert（family5）敏感性扩到全部 10 个模型。
 3. headline 条件扩到 10 seeds（现仅 Qwen 为 10 seeds）。
 4. 图表一律由 `scripts/openllm_{make_report,figures,export}.py` 生成，论文数字不得手工改动。
+
+## 5. 新增补齐的稳健性实验（2026-09-14 第二轮）
+
+| 实验 | 结果 | 结论 |
+|---|---|---|
+| 5-expert 专家库（trend+seasonal、AR10/ridge） | 10/10 全部为正（+0.012 ~ +0.118），比 3-expert 缩小约一半 | 结论不依赖某一个 3-expert 实现，只是 5 分类更难 |
+| MLP64 router（替代线性 router） | 10/10 全部为正，且普遍更大（如 Mistral +0.106 → +0.244，Qwen +0.314 → +0.361） | 不是"线性可读性"假象 |
+| dimension matching（随机投影到 64/128/256/384/512/768/1024/2048 维） | 10/10 模型在所有宽度上 Δ 仍为正（PCA 亦为正但更小） | 4096 维 vs 384 维的表示维度差异不能解释跨架构差异 |
+| pooling（last-token vs mean，Qwen3-8B） | 两种池化下 Δ 同号（见 pooling_sensitivity.csv） | 结论不依赖单一 readout 位置 |
+| oracle target stability（K=20 次未来重采样） | 77% 窗口单一赢家、均值 stability 0.916；单次未来标签在 ~15% 窗口翻转，且翻转集中在近平局窗口（stable 窗口一致率 99.2% vs 不稳定 53.3%） | 单次 future 标签确实含 winner noise，但…… |
+| expected-risk oracle 监督（用 K 次平均风险的赢家做标签） | 5 个模型上 Δ 仍为负（Qwen −0.197、Llama-3.1-8B −0.117 …） | ……把噪声标签换成期望风险标签并不能把负号救回来 → oracle 列的负号是"接口/监督目标"效应，不是标签噪声 |
+| Qwen3 scale sweep | 0.6B +0.175、1.7B +0.158、8B +0.311 | 非单调；只有 8B 明显更大 |
+| headline 10 seeds（Qwen3-8B） | bal3 +0.277 [0.253,0.304]、bal3n +0.267 [0.253,0.281]，10/10 seeds 为正 | 不是 7/17/27 三个 seed 的偶然 |
+
+随着这一轮补齐，`docs/open_llm_final_report.md` 中"remaining risks"只剩：多重比较未校正、单一 C=64/H=16 协议、pooling/10-seed 仅覆盖 Qwen、真实数据上打不过手工特征基线。

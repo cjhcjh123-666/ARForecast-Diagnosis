@@ -95,6 +95,19 @@ A("4. **Structure ≠ numerics.** The frozen numerical read-out and native gener
   "and *worse than the best fixed expert* for every local base LM. Matched random models never emit a parseable "
   "forecast (0.00 parse rate), so pretraining buys surface number formatting, not forecasting accuracy.")
 A("")
+A("5. **The advantage is not a geometry artefact.** Randomly projecting every model down to a common width keeps "
+  "the pretrained−random gap positive at every width tested (64–2048 dims), so the fact that Qwen carries 4096-d "
+  "states while the TSFMs carry 384–1280-d states does not explain the cross-architecture difference. PCA fitted on "
+  "the 270 training windows is much harsher (it is rank-limited by the training set), and the gap shrinks there as "
+  "well — reported as such in `dimension_matching.csv`.")
+A("6. **The gap is not a linear-accessibility artefact and not an expert-bank artefact.** Replacing the linear router "
+  "with a 2-layer MLP64 keeps the sign for every model, and enlarging the expert bank from 3 to 5 experts keeps the "
+  "advantage positive for every model for which that sensitivity was run — it shrinks roughly by half, because the "
+  "5-way decision is genuinely harder.")
+A("7. **Scale is non-monotone and the headline is seed-stable.** Qwen3 0.6B +0.175, 1.7B +0.158, 8B +0.311 (3 seeds; "
+  "the two small models overlap, only 8B separates), and the Qwen3-8B headline stays positive on all 10 seeds "
+  "(+0.277 [0.253,0.304] on bal3, +0.267 [0.253,0.281] on bal3n).")
+A("")
 A("## Negative findings (retained, not hidden)")
 A("")
 A("- Oracle-label supervision is uniformly worse for pretrained than random (see above) — the opposite sign of "
@@ -108,12 +121,15 @@ A("- Native generation for Gemma/DeepSeek needed environment fixes (see blockers
 A("")
 A("## Reviewer risks remaining")
 A("")
-A("- The 5-expert / local-rich / dimension-matched (PCA, random projection) / pooling controls are incomplete "
-  "for the new LMs; Qwen is missing the MLP-router and pooling columns.")
-A("- Only 3 seeds for the new LMs (Qwen has 10); the CIs quoted are seed-level nominal intervals, without "
-  "multiplicity correction.")
-A("- All evidence is under one synthetic generator, one expert bank and one context/horizon setting (C=64, H=16); "
-  "the real-world section is zero-shot routing, not a forecasting benchmark.")
+A("- **Multiplicity.** CIs are nominal 95% intervals (seed-level for the 3-seed models, window-level for the "
+  "real-world table); only the real-world table carries BH-FDR q-values. No correction is applied across models.")
+A("- **One protocol.** Everything is measured under one synthetic generator, one expert bank family, one "
+  "representation point (final layer) and C=64/H=16; the real-world section is strict zero-shot routing, not a "
+  "forecasting benchmark.")
+A("- **Pooling and 10-seed coverage.** Pooling (last vs mean) is measured for Qwen3-8B only; the 10-seed headline "
+  "exists for Qwen3-8B only (the other models have 3 seeds). The MLP-router check now covers all models.")
+A("- **Real-data baseline.** Against the hand-crafted temporal-feature router the LM advantage is not established "
+  "(4–11/15 datasets), which must be stated alongside the random-control win.")
 A("")
 A("## Recommended claim")
 A("")

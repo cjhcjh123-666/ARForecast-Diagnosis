@@ -63,3 +63,31 @@ $PY scripts/openllm_export.py          # all_metrics_long.csv, all_metrics_wide.
 Decision rules kept throughout: BF16 only (no quantized hidden states), random control = from-config
 architecture-native init with the *same* tokenizer / serialization / attention implementation / inference code,
 router trained only on clean primitives, OOD never used for training or tuning, all negative results retained.
+
+## Update 2026-09-14 (round 2) — robustness, scale, seeds, oracle stability
+
+All analyses below are CPU-only and read the frozen feature dumps (no new LM forward passes
+except the feature extractions listed in the first table above).
+
+| script | what it produces |
+|---|---|
+| `scripts/openllm_features_full.py --extra-pool mean` | clean750 + bal3 + bal3n features (last-token **and** mean pooled) per (model, init, seed) |
+| `scripts/openllm_remaining_experiments.py` | `tableB_all.csv` (3 vs 5 experts), `router_capacity_all.csv` (linear vs MLP64), `dimension_matching.csv` (random projection + PCA), `pooling_sensitivity.csv`. Env vars `OPENLLM_MODELS / OPENLLM_SEEDS / OPENLLM_INITS / OPENLLM_OUT_SUFFIX` shard it per (model, seed, init). |
+| `scripts/openllm_scale_and_seeds.py` | `scale_sweep.csv` (Qwen3 0.6B/1.7B/8B) and `ten_seed_headline.csv` (Qwen3-8B, seeds 7..97) |
+| `scripts/openllm_oracle_stability.py` | `oracle_stability.csv` (K=20 future resamples per window: stability, margin, majority label) and `oracle_stability_routing.csv` (family vs single-future vs expected-risk supervision) |
+| `scripts/openllm_merge_parts.py` | merges all per-shard CSVs into the final tables |
+
+Parallel execution recipe (this is how the round was actually run — 24-way sharding turns a
+~90 min sequential job into a few minutes):
+
+```bash
+for m in <model keys>; do for s in 7 17 27; do for i in pretrained random; do
+  OPENLLM_MODELS=$m OPENLLM_SEEDS=$s OPENLLM_INITS=$i OPENLLM_OUT_SUFFIX=__${m}_s${s}_${i} \
+    setsid nohup $PY -u scripts/openllm_remaining_experiments.py > logs/fine/${m}_s${s}_${i}.log 2>&1 &
+done; done; done
+$PY scripts/openllm_merge_parts.py
+```
+
+Environment note: DeepSeek-LLM-7B ships `pytorch_model.bin`, which torch 2.4 refuses to load
+(`CVE-2025-32434` guard) — its feature extraction was run with the `chatts` env (torch 2.6).
+Everything else used `wavellm`. Shard logs are kept in `logs/fine/` and `logs/stab_*.log`.

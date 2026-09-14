@@ -9,7 +9,7 @@ _Auto-generated from result CSVs by `scripts/openllm_make_report.py` (repo `/995
 - LM input = the historical serialization (`clip ±9.99`, 2 decimals, explicit sign, fixed prompt).
 - Representation = **final layer, final non-padding token**; frozen backbone in all attribution experiments.
 - **pretrained** = released base checkpoint; **random** = same architecture constructed from config with native initializers and **no released weights** (per-tensor audit: 0 tensors equal to pretrained).
-- Router trains only on the **270 clean trend/periodic/local windows**; OOD sets are the frozen balanced sets `bal3` (60/60/60 T/P/L, AR-weak-sine local source) and `bal3n` (periodic+AR local source).
+- Router trains only on the **270 clean trend/periodic/local windows**; OOD sets are the frozen balanced sets `bal3` (120 windows, 40/40/40 T/P/L, AR-weak-sine local source) and `bal3n` (120 windows, periodic+AR local source).
 - Two supervision interfaces: **family-label** (predict the generating family; original E4 protocol) and **oracle-label** (predict the expert with lowest realized-future MSE on the clean windows).
 
 ## 2. Model inventory
@@ -83,6 +83,118 @@ The router is trained **only** on the 270 synthetic clean primitive windows and 
 | qwen3_8b_base | 10/15 | -5.7 | 4/15 | +0.0 | 6/15 | 2/15 |
 
 Reading: every model beats its **matched random** control on 10–15/15 datasets with BH-FDR significance on most (median relative routed-MSE change -28% to -6%). Against the hand-crafted **temporal-feature router** the picture is much closer: wins 4–11/15, median relative difference -4.1% to 0.0%. So on real data the pretrained LM advantage over random initialisation is robust, while the advantage over a simple engineered feature baseline is not established. Fairness caveat: these LMs are 3–15B parameters, the random control is the identical architecture, and no real-data fine-tuning or threshold tuning is performed (strict zero-shot decision transfer).
+
+## 4c. Decision-interface and representation-geometry robustness
+
+### Table B — 3-expert vs 5-expert decision definition (family-label, bal3 OOD)
+
+The 5-expert bank adds a trend+seasonal hybrid and an AR(10)/ridge expert; the router supervision is unchanged (family label on the 270 clean primitives). `family5` maps the 5-expert winner back to the 3 primitive families.
+
+| model | 3-expert P/R | 3-expert Δ | 5-expert P/R | 5-expert Δ | oracle-label Δ | margin (best/2nd) |
+|---|---:|---:|---:|---:|---:|---:|
+| deepseek_llm_7b | 0.608/0.458 | **0.150** | 0.470/0.389 | 0.081 | -0.183 | 3.03 |
+| deepseek_v2_lite | 0.797/0.483 | **0.314** | 0.439/0.395 | 0.044 | -0.150 | 3.03 |
+| gemma2_2b | 0.597/0.447 | **0.150** | 0.475/0.357 | 0.118 | -0.133 | 3.03 |
+| gemma2_9b | 0.644/0.444 | **0.200** | 0.440/0.329 | 0.110 | -0.056 | 3.03 |
+| llama31_8b | 0.744/0.517 | **0.228** | 0.446/0.398 | 0.049 | -0.158 | 3.03 |
+| llama32_3b | 0.664/0.517 | **0.147** | 0.494/0.431 | 0.063 | -0.136 | 3.03 |
+| mistral_7b_v03 | 0.639/0.533 | **0.106** | 0.428/0.405 | 0.023 | -0.136 | 3.03 |
+| olmo2_13b | 0.586/0.503 | **0.083** | 0.434/0.422 | 0.012 | -0.161 | 3.03 |
+| olmo2_7b | 0.586/0.492 | **0.094** | 0.484/0.415 | 0.070 | -0.122 | 3.03 |
+| qwen3_8b_base | 0.833/0.519 | **0.314** | 0.467/0.431 | 0.036 | -0.192 | 3.03 |
+
+### Router capacity — linear vs 2-layer MLP64 (family-label, bal3)
+
+| model | linear P/R | linear Δ | MLP64 P/R | MLP64 Δ |
+|---|---:|---:|---:|---:|
+| deepseek_llm_7b | 0.608/0.458 | 0.150 | 0.589/0.422 | 0.167 |
+| deepseek_v2_lite | 0.797/0.483 | 0.314 | 0.797/0.436 | 0.361 |
+| gemma2_2b | 0.597/0.447 | 0.150 | 0.644/0.461 | 0.183 |
+| gemma2_9b | 0.644/0.444 | 0.200 | 0.642/0.461 | 0.181 |
+| llama31_8b | 0.744/0.517 | 0.228 | 0.803/0.508 | 0.294 |
+| llama32_3b | 0.664/0.517 | 0.147 | 0.647/0.469 | 0.178 |
+| mistral_7b_v03 | 0.639/0.533 | 0.106 | 0.675/0.431 | 0.244 |
+| olmo2_13b | 0.586/0.503 | 0.083 | 0.636/0.450 | 0.186 |
+| olmo2_7b | 0.586/0.492 | 0.094 | 0.544/0.428 | 0.117 |
+| qwen3_8b_base | 0.833/0.519 | 0.314 | 0.839/0.478 | 0.361 |
+
+Reading: a nonlinear router does not remove the pretrained advantage — for every model the MLP64 Δ has the same sign as the linear Δ (usually larger), so the effect is not an artefact of linear accessibility.
+
+### Dimension matching (bal3 ΔBA pretrained − random after projection)
+
+`full` = no projection (reference, must agree with the main table). `randproj` = Gaussian random projection (Johnson–Lindenstrauss, preserves geometry at any width). `pca` = PCA fitted on the 270 training windows only (above dim ≈ 270 it degenerates to the same rank-270 projection, so only ≤256 is reported).
+
+| model | full | randproj 64 | 128 | 256 | 384 | 512 | 768 | 1024 | 2048 | pca 32/64/128/256 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| deepseek_llm_7b | 0.150 | 0.175 | 0.142 | 0.158 | 0.144 | 0.164 | 0.189 | 0.167 | 0.147 | 0.13/0.17/0.19/0.18 |
+| deepseek_v2_lite | 0.314 | 0.325 | 0.364 | 0.386 | 0.369 | 0.375 | 0.356 | 0.342 | — | 0.38/0.36/0.35/0.34 |
+| gemma2_2b | 0.150 | 0.217 | 0.222 | 0.197 | 0.250 | 0.275 | 0.192 | 0.197 | 0.147 | 0.20/0.21/0.18/0.17 |
+| gemma2_9b | 0.200 | 0.194 | 0.258 | 0.217 | 0.200 | 0.242 | 0.278 | 0.272 | 0.197 | 0.19/0.19/0.12/0.17 |
+| llama31_8b | 0.228 | 0.289 | 0.297 | 0.244 | 0.286 | 0.306 | 0.294 | 0.306 | 0.275 | 0.25/0.26/0.26/0.23 |
+| llama32_3b | 0.147 | 0.164 | 0.175 | 0.247 | 0.161 | 0.169 | 0.219 | 0.175 | 0.150 | 0.14/0.10/0.09/0.08 |
+| mistral_7b_v03 | 0.106 | 0.244 | 0.167 | 0.158 | 0.217 | 0.364 | 0.281 | 0.236 | 0.111 | 0.09/0.16/0.24/0.25 |
+| olmo2_13b | 0.083 | 0.231 | 0.153 | 0.203 | 0.103 | 0.200 | 0.142 | 0.131 | 0.106 | 0.19/0.23/0.22/0.23 |
+| olmo2_7b | 0.094 | 0.069 | 0.044 | 0.061 | 0.094 | 0.111 | 0.119 | 0.081 | 0.078 | 0.06/0.09/0.10/0.11 |
+| qwen3_8b_base | 0.314 | 0.314 | 0.286 | 0.317 | 0.356 | 0.386 | 0.381 | 0.336 | 0.314 | 0.26/0.28/0.26/0.28 |
+
+### Pooling sensitivity (last non-pad token vs mean over non-pad states)
+
+| model | pooling | clean acc P/R | family-label bal3 P/R | Δ |
+|---|---:|---:|---:|---:|
+| qwen3_8b_base | last | 0.981/0.919 | 0.833/0.519 | 0.314 |
+| qwen3_8b_base | mean | 0.991/0.917 | 0.792/0.500 | 0.292 |
+
+### Model scale (Qwen3 family) and 10-seed headline stability
+
+| model | params | hidden | seeds | ΔBA (bal3) | sd | 95% CI | per seed |
+|---|---:|---:|---:|---:|---:|---|---|
+| qwen3_0.6b | 0.6B | 1024 | 3 | **+0.175** | 0.051 | [+0.117,+0.242] | +0.242;+0.117;+0.167 |
+| qwen3_1.7b | 1.7B | 2048 | 3 | **+0.158** | 0.025 | [+0.125,+0.183] | +0.183;+0.167;+0.125 |
+| qwen3_8b_base | 8.2B | 4096 | 3 | **+0.311** | 0.052 | [+0.242,+0.367] | +0.325;+0.367;+0.242 |
+
+Scale is **not** monotone: 0.6B +0.175, 1.7B +0.158, 8B +0.311 — the two small models are statistically indistinguishable from each other, and only 8B separates clearly.
+
+| test set | seeds | ΔBA | sd | 95% CI | per-seed Δ |
+|---|---:|---:|---:|---|---|
+| bal3 | 10 | **+0.277** | 0.041 | [+0.253,+0.304] | s7:+0.325;s17:+0.367;s27:+0.242;s37:+0.283;s47:+0.250;s57:+0.233;s67:+0.258;s77:+0.233;s87:+0.292;s97:+0.283 |
+| bal3n | 10 | **+0.267** | 0.022 | [+0.253,+0.281] | s7:+0.300;s17:+0.300;s27:+0.267;s37:+0.258;s47:+0.242;s57:+0.242;s67:+0.275;s77:+0.233;s87:+0.283;s97:+0.267 |
+
+All 10 headline seeds are positive on both OOD sets, so the effect is not a seed artefact of seeds 7/17/27.
+
+## 4d. Oracle-target stability — is the realised-future label a stable target?
+
+For every synthetic window the latent process **and** the realised context are held fixed and the future noise is resampled K=20 times, giving $p_j(x)=P(\text{expert } j \text{ wins})$, stability $s(x)=\max_j p_j(x)$ and the expected-risk (majority) label $\arg\max_j p_j(x)$. The traced replay is asserted to reproduce the frozen futures used by every other experiment.
+
+| quantity | value |
+|---|---|
+| windows analysed | 2250 |
+| mean stability $s(x)$ | 0.916 |
+| single dominant winner ($s=1$) | 77.0% |
+| $s \ge 0.8$ | 81.9% |
+| contested ($s \le 0.6$) | 11.8% |
+| primitive windows where single-future winner = majority winner | 84.8% |
+| ... restricted to stable windows ($s>0.8$) | 99.2% |
+| ... restricted to unstable windows ($s \le 0.8$) | 53.3% |
+| majority winner = true family | 69.3% |
+| single-future winner = true family | 64.6% |
+| expert-risk margin (2nd/1st): median / within 1.1x | 5.78 / 14.1% |
+
+Reading: the realised future is not a noisy label on most windows, but it flips on ~15% of them, and the flips concentrate exactly in the near-tie windows the mechanism predicts (99% agreement where the winner is stable vs 53% where it is contested). The expected-risk label is also closer to the latent family than the single-future label, which is why it is the right sensitivity control for the oracle-label routing column.
+
+| model | test | family-label Δ | single-future oracle Δ | expected-risk oracle Δ |
+|---|---:|---:|---:|---:|
+| deepseek_llm_7b | bal3 | +0.150 | -0.183 | -0.136 |
+| deepseek_llm_7b | bal3n | +0.136 | -0.161 | -0.119 |
+| gemma2_9b | bal3 | +0.200 | -0.056 | -0.100 |
+| gemma2_9b | bal3n | +0.197 | -0.094 | -0.131 |
+| llama31_8b | bal3 | +0.228 | -0.158 | -0.117 |
+| llama31_8b | bal3n | +0.197 | -0.189 | -0.106 |
+| olmo2_7b | bal3 | +0.094 | -0.122 | -0.111 |
+| olmo2_7b | bal3n | +0.100 | -0.111 | -0.081 |
+| qwen3_8b_base | bal3 | +0.314 | -0.192 | -0.197 |
+| qwen3_8b_base | bal3n | +0.292 | -0.181 | -0.186 |
+
+This is the decisive control: swapping the noisy single-future label for the expected-risk (majority) label tests whether the negative oracle column is a label-noise artefact or a genuine interface effect.
 
 ## 5. Table E — Direct numerical generation (native + API)
 

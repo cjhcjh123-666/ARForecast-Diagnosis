@@ -1,0 +1,20 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+[qwen3_8b_base/pretrained/s7] done
+[qwen3_8b_base/random/s7] done
+[qwen3_8b_base/pretrained/s17] done
+[qwen3_8b_base/random/s17] done
+[qwen3_8b_base/pretrained/s27] done
+[qwen3_8b_base/random/s27] done
+[llama31_8b/pretrained/s7] done
+[llama31_8b/random/s7] done
+[llama31_8b/pretrained/s17] done
+[llama31_8b/random/s17] done
+[llama31_8b/pretrained/s27] done
+[llama31_8b/random/s27] done
+[llama32_3b/pretrained/s7] done
+[llama32_3b/random/s7] done
+[llama32_3b/pretrained/s17] done
+[llama32_3b/random/s17] done
+[llama32_3b/pretrained/s27] done
+[llama32_3b/random/s27] done
