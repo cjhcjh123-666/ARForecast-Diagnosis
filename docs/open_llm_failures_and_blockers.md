@@ -46,3 +46,19 @@ All negative results and killed runs are kept (logs/ + this file); nothing was s
   model pages (Meta gating for Llama; Google terms for Gemma), or provide a token from an already-approved account.
 - Public P0/P1 downloads continue via hf-mirror (aggregate ≈7.5 MB/s; sizes at 18:10 — DeepSeek-LLM-7B 1.0 GB,
   DeepSeek-V2-Lite 2.1 GB, Mistral-7B 2.8 GB, OLMo-2-7B 3.6 GB, OLMo-2-13B 4.6 GB).
+
+## Update 3 (2026-09-14) — gated models resolved, first failures fixed, suite completed
+
+| # | item | stage | exception / evidence | fix | status |
+|---|---|---|---|---|---|
+| 7 | Llama-3.1-8B / Llama-3.2-3B / Gemma-2-9B / Gemma-2-2B blocked | download | updated HF token still 403 on gated files (see Update 2) | ModelScope official-org mirrors (`LLM-Research/*`), provenance + config/index sha256 in `results/open_llm_suite/raw/modelscope_*.json` | RESOLVED (all four downloaded) |
+| 8 | `openllm_autorun` watchdog never exited | orchestration | `ms_path()` kept returning `None` for the Llama dirs, so the loop stayed alive after 14/18 model×init runs | watchdog killed once its remaining queue was empty; the Llama runs were executed separately and their metrics exist | RESOLVED (process stopped) |
+| 9 | Gemma-2-9B / Gemma-2-2B **native generation, random branch only** | generation | `torch._dynamo.exc.Unsupported: call_method ... AttentionInterface._global_mapping` — gemma2 under `sdpa` has `_supports_static_cache=True` → `generate` enables `torch.compile`; the pretrained branch had loaded with `attn_implementation="eager"` so it never compiled | `load_lm` now gives **both** branches the same attention implementation (`eager` for gemma); this is also required for a fair pretrained-vs-random comparison | RESOLVED (re-ran both gemma models) |
+| 10 | DeepSeek-V2-Lite native generation | generation | (a) official remote code calls `DynamicCache.get_max_length()`, removed in transformers ≥4.49 → `AttributeError`; (b) random branch built with `sdpa` → `ValueError: DeepseekV2ForCausalLM does not support ... scaled_dot_product_attention` | (a) compatibility shim mapping `get_max_length → get_max_cache_shape` in `generate_native`; (b) random branch now mirrors the pretrained branch's `ValueError` → `eager` fallback | RESOLVED (pretrained parse 0.975 / MSE 3.924 reproduced exactly across two independent runs) |
+| 11 | Table-D analysis appeared to hang | stats | 15 datasets × 2 inits × `n_iter=2000` logistic regression on 4096-dim features = 30 redundant router fits per model | router cached per (model, init) — numerically identical, ~15× faster | RESOLVED |
+
+Notes:
+
+- The gemma / DeepSeek failures above affected **only the native-generation task of the random branch**;
+  representation features, clean recognition, read-out and routing for those models were never affected.
+- No negative result was dropped. Everything that failed stayed in `logs/` and is listed here.

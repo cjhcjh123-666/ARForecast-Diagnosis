@@ -9,7 +9,7 @@ CACHE="/9950backfile/chenjiahui/hf_cache/hub"
 REPO=Path(__file__).resolve().parents[1]
 OUT=REPO/"results/open_llm_suite/raw"; OUT.mkdir(parents=True,exist_ok=True)
 os.environ.setdefault("HF_HUB_DISABLE_XET","1")
-os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER","1")
+os.environ.pop("HF_HUB_ENABLE_HF_TRANSFER",None)
 
 def sha256(p):
     h=hashlib.sha256()

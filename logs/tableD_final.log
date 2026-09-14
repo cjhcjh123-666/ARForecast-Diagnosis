@@ -1,0 +1,21 @@
+/public/duyinglong/miniconda3/envs/wavellm/lib/python3.11/site-packages/torch/cuda/__init__.py:58: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+done deepseek_llm_7b
+done deepseek_v2_lite
+done gemma2_2b
+done gemma2_9b
+done llama31_8b
+done llama32_3b
+done mistral_7b_v03
+done olmo2_13b
+done olmo2_7b
+wrote /9950backfile/chenjiahui/ARForecast-Diagnosis/results/open_llm_suite/raw/tableD_realworld.csv and /9950backfile/chenjiahui/ARForecast-Diagnosis/results/open_llm_suite/raw/tableD_realworld_stats.csv
+deepseek_llm_7b n_ds=15 mean P=15.2227 R=15.2977 feature=15.4155 oracle=14.6163 | P<R on 13/15
+deepseek_v2_lite n_ds=15 mean P=15.2192 R=15.4094 feature=15.4155 oracle=14.6163 | P<R on 14/15
+gemma2_2b      n_ds=15 mean P=15.1818 R=15.3203 feature=15.4155 oracle=14.6163 | P<R on 12/15
+gemma2_9b      n_ds=15 mean P=15.1953 R=15.3072 feature=15.4155 oracle=14.6163 | P<R on 13/15
+llama31_8b     n_ds=15 mean P=15.0226 R=15.4707 feature=15.4155 oracle=14.6163 | P<R on 14/15
+llama32_3b     n_ds=15 mean P=15.0164 R=15.4514 feature=15.4155 oracle=14.6163 | P<R on 15/15
+mistral_7b_v03 n_ds=15 mean P=15.0939 R=15.5740 feature=15.4155 oracle=14.6163 | P<R on 13/15
+olmo2_13b      n_ds=15 mean P=15.0066 R=15.3790 feature=15.4155 oracle=14.6163 | P<R on 13/15
+olmo2_7b       n_ds=15 mean P=15.0602 R=15.3674 feature=15.4155 oracle=14.6163 | P<R on 13/15

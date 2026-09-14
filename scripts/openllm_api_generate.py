@@ -39,9 +39,13 @@ def _format_values(v):
 def build_prompt(ctx):
     return "Forecast the next values of this normalized time series.\nHistory: "+_format_values(ctx)+"\nForecast:"
 
+FLOAT_RE=re.compile(r"[-+]?\d+(?:\.\d+)?")
 def parse_text(t,h=16):
-    vals=[float(x) for x in NUM_RE.findall(t)]
-    return (np.asarray(vals[:h]),1) if len(vals)>=h else (None,0)
+    strict=[float(x) for x in NUM_RE.findall(t)]
+    if len(strict)>=h: return np.asarray(strict[:h]),1,"strict"
+    loose=[float(x) for x in FLOAT_RE.findall(t)]
+    if len(loose)>=h: return np.asarray(loose[:h]),0,"lenient"
+    return None,0,"fail"
 
 def http_post(url,key,payload,timeout=120,retries=4):
     data=json.dumps(payload).encode()
@@ -62,11 +66,14 @@ def http_post(url,key,payload,timeout=120,retries=4):
     return None,0.0,"exhausted"
 
 def windows_for(seed, n_win):
-    """Same construction as the local native audit: 300 class-stratified test windows."""
+    """Class-stratified test windows (equal per family) — matches the 40-window diagnostic."""
     ctx,fut,kk=build_labeled_windows(KINDS,64,16,150,seed)
     n=150;ntr=90
-    te=np.concatenate([np.arange(k*n+ntr,(k+1)*n) for k in range(5)])
-    return ctx[te][:n_win], fut[te][:n_win], kk[te][:n_win]
+    per=max(1,n_win//5); sel=[]
+    for k in range(5):
+        sel.append(np.arange(k*n+ntr, k*n+ntr+per))
+    te=np.concatenate(sel)[:n_win]
+    return ctx[te], fut[te], kk[te]
 
 def load_done(jsonl):
     done=set()
@@ -88,7 +95,9 @@ def main():
     ap.add_argument("--max-requests",type=int,default=int(os.environ.get("API_MAX_REQUESTS","0")))
     ap.add_argument("--budget-usd",type=float,default=float(os.environ.get("API_BUDGET_USD","0")))
     ap.add_argument("--dry-run",action="store_true")
+    ap.add_argument("--tag",default="strat40")
     a=ap.parse_args()
+    global a_tag; a_tag=a.tag
     if not a.dry_run and os.environ.get("RUN_PAID_API")!="1":
         raise SystemExit("Refusing paid calls: set RUN_PAID_API=1 (and API_MAX_REQUESTS or API_BUDGET_USD)")
     cfg=json.loads((REPO/"configs/api_models_frozen.yaml").read_text())
@@ -107,7 +116,7 @@ def main():
     counter={"n":0}
     def one(t):
         model,proto,seed,i,ctx_i,fut_i=t
-        jsonl=RAW/model.replace("/","__")/f"{proto}_s{seed}.jsonl"; jsonl.parent.mkdir(parents=True,exist_ok=True)
+        jsonl=RAW/model.replace("/","__")/f"{proto}_{a_tag}_s{seed}.jsonl"; jsonl.parent.mkdir(parents=True,exist_ok=True)
         prompt=build_prompt(ctx_i)
         if proto=="raw":
             url=f"{base}/v1/completions"; payload={"model":model,"prompt":prompt,"temperature":0,"max_tokens":160}
@@ -127,9 +136,10 @@ def main():
             rec["error"]=err
         else:
             text=resp.get("choices",[{}])[0].get("text") if proto=="raw" else resp.get("choices",[{}])[0].get("message",{}).get("content")
-            vals,ok=parse_text(text or "")
+            vals,ok,mode=parse_text(text or "")
             rec.update(ok=True,returned_model=resp.get("model"),usage=resp.get("usage"),text=(text or "")[:2000],
-                       parsed=(None if vals is None else vals.tolist()),parse_ok=int(ok))
+                       parsed=(None if vals is None else vals.tolist()),parse_ok=int(ok),parse_mode=mode,
+                       parsed_lenient=(None if vals is None or mode!="lenient" else vals.tolist()))
         with LOCK:
             with open(jsonl,"a") as f: f.write(json.dumps(rec,ensure_ascii=False)+"\n")
         return rec
@@ -137,7 +147,7 @@ def main():
     for model in models:
         for proto in a.protocols.split(","):
             for seed in [int(x) for x in a.seeds.split(",")]:
-                done |= load_done(RAW/model.replace("/","__")/f"{proto}_s{seed}.jsonl")
+                done |= load_done(RAW/model.replace("/","__")/f"{proto}_{a.tag}_s{seed}.jsonl")
     todo=[t for t in tasks if (t[0],t[1],t[2],t[3]) not in done]
     print("already done:",len(done),"| todo:",len(todo))
     if a.dry_run:

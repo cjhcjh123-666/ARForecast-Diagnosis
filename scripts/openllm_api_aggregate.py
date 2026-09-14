@@ -20,10 +20,12 @@ RAW=REPO/"results/open_llm_suite/api_raw"
 OUT=REPO/"results/open_llm_suite"
 
 def windows(seed,n=40):
+    """MUST match the API runner's class-stratified selection (n/5 per family)."""
     ctx,fut,kk=build_labeled_windows(KINDS,64,16,150,seed)
-    n150=150;ntr=90
-    te=np.concatenate([np.arange(k*n150+ntr,(k+1)*n150) for k in range(5)])
-    return ctx[te][:n],fut[te][:n],kk[te][:n]
+    n150=150;ntr=90;per=max(1,n//5)
+    sel=[np.arange(k*n150+ntr,k*n150+ntr+per) for k in range(5)]
+    te=np.concatenate(sel)[:n]
+    return ctx[te],fut[te],kk[te]
 
 def refs(seed,n=40):
     ctx,fut,kind=windows(seed,n)
@@ -44,7 +46,7 @@ def main():
     rows=[]
     for jf in sorted(RAW.glob("*/*.jsonl")):
         model=jf.parent.name.replace("__","/")
-        proto,seed=jf.stem.split("_s"); seed=int(seed)
+        parts=jf.stem.rsplit("_s",1); proto=parts[0]; seed=int(parts[1])
         recs=[json.loads(l) for l in jf.read_text(errors="ignore").splitlines() if l.strip()]
         done=[r for r in recs if r.get("ok")]
         if not done: continue

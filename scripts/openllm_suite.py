@@ -70,19 +70,37 @@ def load_lm(path, init, seed, device, trust_remote_code=True):
     from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
     tok=AutoTokenizer.from_pretrained(path, trust_remote_code=trust_remote_code)
     if tok.pad_token_id is None: tok.pad_token=tok.eos_token
+    # NOTE: the attention implementation MUST be identical for pretrained and random,
+    # otherwise the two branches run different inference code. gemma2 under sdpa+static
+    # cache triggers torch.compile (can_compile=True) and dies inside dynamo, so both
+    # branches use eager for gemma.
+    _attn="eager" if "gemma" in str(path).lower() else "sdpa"
     if init=="random":
         torch.manual_seed(seed)
         cfg=AutoConfig.from_pretrained(path, trust_remote_code=trust_remote_code)
+        def _build(attn):
+            try:
+                cfg._attn_implementation=attn
+            except Exception:
+                pass
+            try:
+                # build directly in bf16 to avoid a large fp32 CPU copy (OOM-prone for >=3B)
+                return AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code, torch_dtype=torch.bfloat16)
+            except TypeError:
+                return AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code).to(torch.bfloat16)
         try:
-            # build directly in bf16 to avoid a large fp32 CPU copy (OOM-prone for >=3B)
-            model=AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code, torch_dtype=torch.bfloat16)
-        except TypeError:
-            model=AutoModelForCausalLM.from_config(cfg, trust_remote_code=trust_remote_code).to(torch.bfloat16)
+            model=_build(_attn)
+        except ValueError as e:
+            # e.g. DeepSeek-V2-Lite's remote code rejects sdpa: mirror the pretrained-branch fallback
+            if "attention" in str(e).lower():
+                model=_build("eager")
+            else:
+                raise
     else:
         dev=int(device.split(":")[1]) if ":" in device else 0
         try:
             model=AutoModelForCausalLM.from_pretrained(path, trust_remote_code=trust_remote_code,
-                  torch_dtype=torch.bfloat16, attn_implementation="sdpa", device_map={"":dev})
+                  torch_dtype=torch.bfloat16, attn_implementation=_attn, device_map={"":dev})
         except ValueError as e:
             if "attention" in str(e).lower() or "sdpa" in str(e).lower() or "colwise" in str(e).lower():
                 model=AutoModelForCausalLM.from_pretrained(path, trust_remote_code=trust_remote_code,
@@ -109,6 +127,15 @@ def embed(model, tok, ctx, device, pooling="last", bs=16):
 
 @torch.no_grad()
 def generate_native(model, tok, ctx, device, h=16, max_new_tokens=160, bs=8):
+    # compat shim: DeepSeek-V2-Lite's official remote code (modeling_deepseek.py) calls
+    # DynamicCache.get_max_length(), removed in transformers>=4.49. Semantics preserved
+    # (old get_max_length returned the configured max cache length; None = dynamic).
+    try:
+        from transformers.cache_utils import DynamicCache
+        if not hasattr(DynamicCache,"get_max_length"):
+            DynamicCache.get_max_length=lambda self: self.get_max_cache_shape()
+    except Exception:
+        pass
     model.eval(); preds=[]; parses=[]; raws=[]
     for st in range(0,len(ctx),bs):
         chunk=ctx[st:st+bs]

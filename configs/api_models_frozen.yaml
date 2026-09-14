@@ -1,7 +1,13 @@
 {
-  "created": "20260911_173140",
+  "created": "2026-09-11",
   "base_url": "https://api2.aigcbest.top",
-  "selection_rule": "<=2 per family from the live listing; chat protocol",
+  "note": "refreshed after 4 provider-side failures; protocol B chat",
+  "excluded_provider_failures": [
+    "Pro/THUDM/GLM-4.1V-9B-Thinking",
+    "chatgpt-4o-latest",
+    "labs-mistral-small-creative",
+    "llama-3.1-405b"
+  ],
   "models": [
     {
       "family": "deepseek",
@@ -14,13 +20,28 @@
       "protocol_hint": "chat"
     },
     {
+      "family": "deepseek",
+      "model_id": "DeepSeek-V3",
+      "protocol_hint": "chat"
+    },
+    {
       "family": "llama",
       "model_id": "llama-3.3-70b-instruct",
       "protocol_hint": "chat"
     },
     {
       "family": "llama",
-      "model_id": "llama-3.1-405b",
+      "model_id": "llama-3.1-8b",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "llama",
+      "model_id": "llama-3.1-70b-instruct",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "gemma",
+      "model_id": "gemma-3-27b-it",
       "protocol_hint": "chat"
     },
     {
@@ -34,28 +55,23 @@
       "protocol_hint": "chat"
     },
     {
+      "family": "qwen",
+      "model_id": "qwen2.5-72b-instruct",
+      "protocol_hint": "chat"
+    },
+    {
+      "family": "qwen",
+      "model_id": "qwen-plus",
+      "protocol_hint": "chat"
+    },
+    {
       "family": "mistral",
       "model_id": "mistral-large-2402",
       "protocol_hint": "chat"
     },
     {
       "family": "mistral",
-      "model_id": "labs-mistral-small-creative",
-      "protocol_hint": "chat"
-    },
-    {
-      "family": "gemma",
-      "model_id": "gemma-3-27b-it",
-      "protocol_hint": "chat"
-    },
-    {
-      "family": "other",
-      "model_id": "chatgpt-4o-latest",
-      "protocol_hint": "chat"
-    },
-    {
-      "family": "other",
-      "model_id": "Pro/THUDM/GLM-4.1V-9B-Thinking",
+      "model_id": "mistral-large-latest",
       "protocol_hint": "chat"
     }
   ]

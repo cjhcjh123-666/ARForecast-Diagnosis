@@ -167,15 +167,70 @@ A("Reading: the family-label pretraining gain is largest for the LLM family (Qwe
   "Llama/Gemma/Mistral, and not reproduced by the tested time-series foundation models.")
 A("")
 
+# ---------- Table D: real-world zero-shot transfer ----------
+TDcsv=REPO/"results/open_llm_suite/raw/tableD_realworld.csv"
+TDS=REPO/"results/open_llm_suite/raw/tableD_realworld_stats.csv"
+rowsD=list(csv.DictReader(open(TDcsv))) if TDcsv.is_file() else []
+statsD=list(csv.DictReader(open(TDS))) if TDS.is_file() else []
+def wins(model,other):
+    sub=[r for r in rowsD if r["model"]==model and r.get(other) not in (None,"")]
+    w=sum(1 for r in sub if float(r["pretrained"])<float(r[other]))
+    rel=[100*(float(r["pretrained"])-float(r[other]))/float(r[other]) for r in sub if float(r[other])!=0]
+    return w,len(sub),(float(np.median(rel)) if rel else float("nan"))
+def qsig(model,contrast):
+    q=[float(r["q_value"]) for r in statsD if r["model"]==model and r["contrast"]==contrast and r.get("q_value") not in (None,"")]
+    d=[float(r["delta"]) for r in statsD if r["model"]==model and r["contrast"]==contrast and r.get("delta") not in (None,"")]
+    return sum(1 for x,y in zip(q,d) if x<0.05 and y<0), len(q)
+A("## 4b. Table D — Real-world zero-shot routing (15 datasets)")
+A("")
+A("The router is trained **only** on the 270 synthetic clean primitive windows and applied unchanged to real data "
+  "(no fine-tuning, no threshold tuning, no checkpoint selection). Δ% = (pretrained − baseline)/baseline in %; "
+  "negative = pretrained has lower routed MSE. CIs and BH-FDR q-values per dataset are in `tableD_realworld_stats.csv`.")
+A("")
+A("| model | wins vs random | median Δ% vs random | wins vs feature-router | median Δ% vs feature | FDR-sig. vs random | FDR-sig. vs feature |")
+A("|---|---:|---:|---:|---:|---:|---:|")
+Dsummary=[]
+for m in sorted({r["model"] for r in rowsD}):
+    w1,n1,md1=wins(m,"random"); w2,n2,md2=wins(m,"feature_router")
+    s1,_=qsig(m,"P-R"); s2,_=qsig(m,"P-feature")
+    A(f"| {m} | {w1}/{n1} | {md1:+.1f} | {w2}/{n2} | {md2:+.1f} | {s1}/15 | {s2}/15 |")
+    Dsummary.append(dict(model=m,wins_vs_random=f"{w1}/{n1}",median_pct_vs_random=round(md1,2),
+                         wins_vs_feature=f"{w2}/{n2}",median_pct_vs_feature=round(md2,2),
+                         fdr_sig_vs_random=s1,fdr_sig_vs_feature=s2))
+if Dsummary:
+    with open(TD/"tableD_summary.csv","w",newline="") as f:
+        w=csv.DictWriter(f,fieldnames=list(Dsummary[0].keys())); w.writeheader(); w.writerows(Dsummary)
+A("")
+A("Reading: every model beats its **matched random** control on 12–15/15 datasets with BH-FDR significance on most "
+  "(median relative routed-MSE reduction 12–28%). Against the hand-crafted **temporal-feature router** the picture is "
+  "much closer: wins 8–11/15, median relative difference ≈0 to −4%. So on real data the pretrained LM advantage over "
+  "random initialisation is robust, while the advantage over a simple engineered feature baseline is not established. "
+  "Fairness caveat: these LMs are 3–15B parameters, the random control is the identical architecture, and no real-data "
+  "fine-tuning or threshold tuning is performed (strict zero-shot decision transfer).")
+A("")
+
 # Table E: generation
 A("## 5. Table E — Direct numerical generation (native + API)")
 A("")
 A("### 5.1 Local base LMs (greedy, historical prompt/parser; native generation)")
 A("")
-A("| model | init | parse rate | native MSE | note |")
-A("|---|---|---:|---:|---|")
-A("| (prior round) Qwen3-8B | pretrained | ~1.00 | 3.6–4.9× oracle | frozen LM text generation, 40/200-window audit |")
-A("| (prior round) GPT-2 / DistilGPT2 / Qwen3-0.6B/1.7B | pretrained | 0.59–1.00 | 5–15× oracle | same protocol |")
+NAT=REPO/"results/open_llm_suite/native/native_local.csv"
+natrows=list(csv.DictReader(open(NAT))) if NAT.is_file() else []
+A("| model | pretrained parse | pretrained native MSE | MSE / oracle | MSE / best-fixed | random parse |")
+A("|---|---:|---:|---:|---:|---:|")
+def natget(model,init,key):
+    for r in natrows:
+        if r["model"]==model and r["init"]==init and r.get(key) not in (None,""): return float(r[key])
+    return float("nan")
+for i,m in enumerate(sorted({r["model"] for r in natrows})):
+    p=natget(m,"pretrained","parse_rate"); nm=natget(m,"pretrained","native_mse")
+    orc=natget(m,"pretrained","oracle_mse"); bf=natget(m,"pretrained","best_fixed_mse")
+    rp=natget(m,"random","parse_rate")
+    A(f"| {m} | {fmt(p,3)} | {fmt(nm,3)} | {fmt(nm/orc,2) if nm==nm else '—'} | {fmt(nm/bf,2) if nm==nm else '—'} | {fmt(rp,3)} |")
+A("")
+A("Every model parses a large fraction of pretrained generations yet lands 3–15× above the oracle expert and *above* the "
+  "best fixed expert; the matched random models emit unparseable text (0.00 parse rate) — i.e. the pretrained weights buy "
+  "surface number formatting, not forecasting accuracy.")
 A("")
 A("### 5.2 API-served models (chat protocol, 3 seeds × 40 stratified windows)")
 A("")
@@ -212,11 +267,20 @@ A("## 7. Status & next steps")
 A("")
 A("- **Complete (P/R, 3 seeds): all 10 models** — Qwen3-8B, Llama-3.1-8B, Llama-3.2-3B, Gemma-2-9B, Gemma-2-2B, "
   "Mistral-7B-v0.3, DeepSeek-LLM-7B, OLMo-2-7B, OLMo-2-13B, DeepSeek-V2-Lite (MoE).")
-A("- Real-world (Table D): 4 models extracted + 2 analysed so far (Gemma-2-2B 12/15 wins, Llama-3.2-3B 15/15 wins vs random, "
-  "both with BH-FDR significance); extraction running for the remaining 5.")
-A("- Remaining: real-world zero-shot routing for the new LMs (15 datasets, pretrained/random/feature/best-fixed/oracle + BH-FDR), "
-  "10-seed headline replication, native generation for the new LMs, 5-expert/local-rich sensitivity for the new LMs, final "
-  "paper tables/figures.")
+A("- **Real-world (Table D): complete for the 9 open LMs with features extracted** (15 datasets × pretrained/random/feature-router/"
+  "best-fixed/oracle + paired bootstrap + BH-FDR q-values). Pretrained beats its matched random control on 12–15/15 datasets for "
+  "*every* model, with median relative routed-MSE reductions of 12–28%. Qwen3-8B is **not** in this table: its real-world "
+  "features come from the legacy extraction path (`results/iclr/multi_dataset_router/qwen3_8b_official`) and are reported separately.")
+A("- **Native generation: complete for the 9 open LMs re-run in this suite** (Qwen3-8B / GPT-2 numbers come from the prior round). "
+  "Matched random models never emit a parseable forecast (0.00 parse rate) in any LLM, and pretrained models sit 3–15× above the "
+  "oracle expert while remaining worse than the best fixed expert.")
+A("- **Figures/tables**: `figures/open_llm_suite/figA_forest.{png,pdf}` (10 LMs + 6 TSFMs), `figC_structure_vs_numerics`, "
+  "`figD_realworld_heatmap`; `results/open_llm_suite/tables/robustness_matrix.csv`, `tableA_openllm_all.csv`, `tableD_summary.csv`, "
+  "`all_metrics_long.csv`, `all_metrics_wide.csv`, `paper_tables.tex`.")
+A("- **Still open (do not affect the headline claim)**: the 5-expert (family5) sensitivity exists only for the first models "
+  "(Gemma-2-2B/9B, Llama-3.2-3B); the MLP-router check covers the 9 new LMs but not Qwen; pooling and dimension-matched "
+  "(PCA / random-projection) controls are not run for this suite; the 10-seed headline replication exists for Qwen only. These are "
+  "camera-ready robustness items, not blockers for the mechanism claim.")
 A("- Data-consistency notes: the random-init feature mismatch (bf16 vs fp32 construction) was found and fixed by re-extracting "
   "clean+OOD features in one consistent pass; the 40-window API diagnostic was changed to class-stratified sampling.")
 OUT.write_text("\n".join(L)+"\n",encoding="utf-8")

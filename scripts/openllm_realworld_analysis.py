@@ -38,6 +38,10 @@ def parse_model(fname):
 models=sorted({m for m in (parse_model(f.name) for f in RF.glob("rw_*_pretrained.npz")) if m})
 rows=[]; boot_rows=[]
 for model in models:
+    # The clean-primitive router depends only on (model, init); training it once and
+    # reusing it across the 15 datasets is numerically identical and ~15x faster.
+    routers={}
+    c270=np.concatenate([np.arange(k*150,k*150+90) for k in range(3)])
     for f_ in sorted(WD.glob("*_windows.npz")):
         ds=f_.name.replace("_windows.npz","")
         z=np.load(f_); ctx,fut=z["ctx"],z["fut"]
@@ -50,9 +54,11 @@ for model in models:
         for init in ["pretrained","random"]:
             fc=RF/f"rw_{model}_{init}.npz"; fd=RF/f"rw_{model}_{init}_{ds}.npz"
             if not (fc.is_file() and fd.is_file()): continue
-            H=np.load(fc)["h_clean"]; kind=np.load(fc)["clean_kind"]; h=np.load(fd)["h"]
-            c270=np.concatenate([np.arange(k*150,k*150+90) for k in range(3)])
-            _,pred=softmax_predict(h,*softmax_regression(H[c270],kind[c270],n_iter=2000))
+            if init not in routers:
+                zc=np.load(fc); H=zc["h_clean"]; kind=zc["clean_kind"]
+                routers[init]=softmax_regression(H[c270],kind[c270],n_iter=2000)
+            h=np.load(fd)["h"]
+            _,pred=softmax_predict(h,*routers[init])
             route[init]=E[np.arange(len(ctx)),pred]
         rec={"model":model,"dataset":ds,"n":len(ctx),
              "persistence":round(float(pers.mean()),4),"best_fixed":round(float(best.mean()),4),
