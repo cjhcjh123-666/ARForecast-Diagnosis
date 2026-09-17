@@ -50,6 +50,27 @@ def _fmt(values) -> str:
     return json.dumps([None if v is None else round(float(v), 2) for v in values])
 
 
+INSTRUCTION = {
+    "multiple_choice_abcd": "Answer with a single letter: A, B, C or D.",
+    "multiple_choice_abc": "Answer with a single letter: A, B or C.",
+    "multiple_choice_ab": "Answer with a single letter: A or B.",
+    "true_false": "Answer with a single letter: T or F.",
+}
+
+
+def answer_suffix(item: dict) -> str:
+    """Protocol-locked answer-format instruction (identical for every model and condition).
+
+    Rationale: the released IRTS items are written for an instruction-following interface. A raw
+    completion prompt makes a BASE language model continue the series numerically instead of
+    answering, which measures formatting, not temporal reasoning. The suffix only states the answer
+    format and never contains the answer.
+    """
+    ins = INSTRUCTION.get(item.get("answer_format", "multiple_choice_abcd"),
+                          "Answer with a single letter.")
+    return "\n" + ins + "\nAnswer:"
+
+
 def render(item: dict, condition: str = "full", seed: int = 0) -> str:
     """Build the LM input for one condition.
 
@@ -59,9 +80,9 @@ def render(item: dict, condition: str = "full", seed: int = 0) -> str:
     reversed_ts   : values reversed in time
     """
     if condition == "full":
-        return item["question"]
+        return item["question"] + answer_suffix(item)
     if condition == "question_only":
-        return (item["pre"] + "[the time series is not available]" + item["post"]).strip()
+        return (item["pre"] + "[the time series is not available]" + item["post"]).strip() + answer_suffix(item)
     vals = _values(item["series_str"])
     if condition == "shuffled_ts":
         import numpy as np
@@ -76,7 +97,7 @@ def render(item: dict, condition: str = "full", seed: int = 0) -> str:
         vals = list(reversed(vals))
     else:
         raise ValueError(condition)
-    return item["pre"] + _fmt(vals) + item["post"]
+    return item["pre"] + _fmt(vals) + item["post"] + answer_suffix(item)
 
 
 def parse(text: str, answer_format: str) -> str | None:
