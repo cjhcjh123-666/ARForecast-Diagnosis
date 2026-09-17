@@ -11,7 +11,7 @@ Outputs
   results/temporal_abstraction/reps/<key>_<init>_s<seed>.npz   (h_<depth> arrays)
 """
 from __future__ import annotations
-import argparse, json, sys
+import argparse, json, os, sys
 from pathlib import Path
 import numpy as np
 REPO = Path(__file__).resolve().parents[1]
@@ -21,8 +21,8 @@ import torch  # noqa: E402
 from scripts.openllm_suite import prompts, resolve_path, load_lm  # noqa: E402
 from temporal_abstraction.primitive_targets import build_pool  # noqa: E402
 
-OUT_POOL = REPO / "results/temporal_abstraction/primitives"
-OUT_REPS = REPO / "results/temporal_abstraction/reps"
+OUT_POOL = Path(os.environ.get("TA_POOL_DIR", REPO / "results/temporal_abstraction/primitives"))
+OUT_REPS = Path(os.environ.get("TA_REPS_DIR", REPO / "results/temporal_abstraction/reps"))
 
 
 def pool_paths(seed: int):
@@ -47,7 +47,7 @@ def ensure_pool(seed: int):
 
 
 @torch.inference_mode()
-def embed_layers(model, tok, ctx, device, layer_ids, bs=16):
+def embed_layers(model, tok, ctx, device, layer_ids, bs=48):
     """Final non-padding token state at the requested hidden-state indices."""
     acc = {k: [] for k in layer_ids}
     n_hidden = None
