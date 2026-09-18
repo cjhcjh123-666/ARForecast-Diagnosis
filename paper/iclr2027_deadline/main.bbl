@@ -1,0 +1,113 @@
+\begin{thebibliography}{18}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Alain \& Bengio(2017)Alain and Bengio]{alain2016understanding}
+Guillaume Alain and Yoshua Bengio.
+\newblock Understanding intermediate layers using linear classifier probes.
+\newblock In \emph{ICLR Workshop}, 2017.
+
+\bibitem[Anonymous et~al.(2025{\natexlab{a}})]{randominit2025}
+Anonymous et~al.
+\newblock Random initialization can't catch up: The advantage of language model
+  transfer for time series forecasting.
+\newblock \emph{arXiv preprint arXiv:2506.21570}, 2025{\natexlab{a}}.
+
+\bibitem[Anonymous et~al.(2025{\natexlab{b}})]{tsfm_intervention2025}
+Anonymous et~al.
+\newblock Intervening on learned temporal concepts in time-series foundation
+  models.
+\newblock In \emph{ICML}, 2025{\natexlab{b}}.
+
+\bibitem[Anonymous et~al.(2025{\natexlab{c}})]{tsfm_probe2025}
+Anonymous et~al.
+\newblock Probing the temporal structure of time-series foundation models.
+\newblock In \emph{ICML}, 2025{\natexlab{c}}.
+
+\bibitem[Anonymous et~al.(2026)]{manifold2026}
+Anonymous et~al.
+\newblock Llm pretraining shapes a generalizable manifold: Insights into
+  cross-modal transfer to time series.
+\newblock \emph{arXiv preprint arXiv:2605.20449}, 2026.
+
+\bibitem[Ansari et~al.(2024)]{ansari2024chronos}
+Abdul~Fatir Ansari et~al.
+\newblock Chronos: Learning the language of time series.
+\newblock \emph{Transactions on Machine Learning Research}, 2024.
+
+\bibitem[Bates \& Granger(1969)Bates and Granger]{bates1969combination}
+J.~M. Bates and C.~W.~J. Granger.
+\newblock The combination of forecasts.
+\newblock \emph{Journal of the Operational Research Society}, 1969.
+
+\bibitem[Chen et~al.(2025)]{waveTLM2025}
+Jiahui Chen et~al.
+\newblock Wavetlm: Task-aware routing with language models for time-series
+  forecasting.
+\newblock \emph{under review}, 2025.
+
+\bibitem[Gruver et~al.(2023)Gruver, Finzi, Qiu, and Wilson]{gruver2023large}
+Nate Gruver, Marc Finzi, Shikai Qiu, and Andrew~Gordon Wilson.
+\newblock Large language models are zero-shot time series forecasters.
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2023.
+
+\bibitem[Jin et~al.(2024)Jin, Wang, Ma, Chu, Zhang, Shi, Chen, Liang, Li, Pan,
+  and Wen]{time-llm2023}
+Ming Jin, Shiyu Wang, Lin Ma, Zhixuan Chu, James~Y. Zhang, Xinming Shi, Pin-Yu
+  Chen, Yuxuan Liang, Yuan-Fang Li, Shirui Pan, and Qingsong Wen.
+\newblock Time-llm: Time series forecasting by reprogramming large language
+  models.
+\newblock In \emph{International Conference on Learning Representations
+  (ICLR)}, 2024.
+
+\bibitem[Liu et~al.(2024)]{liu2024pre-training}
+Yong Liu et~al.
+\newblock Pre-training time series foundation models with llm-style
+  autoregressive pretraining.
+\newblock \emph{arXiv preprint arXiv:2410.07330}, 2024.
+
+\bibitem[Nie et~al.(2023)Nie, Nguyen, Sinthong, and Kalagnanam]{zhou2024one}
+Yuqi Nie, Nam~H. Nguyen, Phanwadee Sinthong, and Jayant Kalagnanam.
+\newblock Patchtst: A patch time series transformer for long-term forecasting.
+\newblock In \emph{ICLR}, 2023.
+
+\bibitem[Rasul et~al.(2023)]{rasul2024lag}
+Kashif Rasul et~al.
+\newblock Lag-llama: Towards foundation models for probabilistic time series
+  forecasting.
+\newblock \emph{arXiv preprint arXiv:2310.08278}, 2023.
+
+\bibitem[Santoro et~al.(2018)Santoro, Hill, Barrett, Morcos, and
+  Lillicrap]{beldon2018measuring}
+Adam Santoro, Felix Hill, David Barrett, Ari Morcos, and Timothy Lillicrap.
+\newblock Measuring abstract reasoning in neural networks.
+\newblock In \emph{ICML}, 2018.
+
+\bibitem[Shazeer et~al.(2017)]{shazeer2017outrageously}
+Noam Shazeer et~al.
+\newblock Outrageously large neural networks: The sparsely-gated
+  mixture-of-experts layer.
+\newblock In \emph{ICLR}, 2017.
+
+\bibitem[Tan et~al.(2024)Tan, Merrill, Gupta, Althoff, and
+  Hartvigsen]{tan2024are}
+Mingtian Tan, Mike Merrill, Vinay Gupta, Tim Althoff, and Thomas Hartvigsen.
+\newblock Are language models actually useful for time series forecasting?
+\newblock In \emph{Advances in Neural Information Processing Systems
+  (NeurIPS)}, 2024.
+
+\bibitem[Team(2025)]{qwen-time}
+Qwen Team.
+\newblock Qwen2.5-1m: Deploying a long-context llm at scale.
+\newblock In \emph{arXiv preprint}, 2025.
+
+\bibitem[Zhou et~al.(2023)Zhou, Niu, Wang, Sun, and Jin]{new2022}
+Tian Zhou, Peisong Niu, Xue Wang, Liang Sun, and Rong Jin.
+\newblock One fits all: Power general time series analysis by pretrained lm.
+\newblock \emph{Advances in Neural Information Processing Systems}, 2023.
+
+\end{thebibliography}

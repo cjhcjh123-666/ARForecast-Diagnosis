@@ -1,0 +1,68 @@
+\section{Which temporal structures are accessible?}
+\label{sec:verified-diagnostics}
+
+We extend the dynamics-level recognition experiment with property-specific
+linear probes on frozen final-layer representations.  For every model we use a
+same-architecture random initialization, identical samples and splits, and
+seeds 7, 17, and 27.  Table~\ref{tab:level1-verified} averages the ten paired
+model results.  A positive improvement always means that pretraining is better;
+for NMAE it is therefore random minus pretrained.
+
+\begin{table}[t]
+\centering
+\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llrrrr}
+\toprule
+Property & Metric & Pretrained & Random & Improvement & Positive models \\
+\midrule
+Dominant period & balanced acc. & 0.715 & 0.364 & +0.351 & 10/10 \\
+Anomaly present & balanced acc. & 0.754 & 0.599 & +0.155 & 10/10 \\
+Local dependence & balanced acc. & 0.460 & 0.331 & +0.129 & 10/10 \\
+Noise level & balanced acc. & 0.542 & 0.436 & +0.107 & 10/10 \\
+Dominant period & NMAE $\downarrow$ & 0.200 & 0.594 & +0.394 & 10/10 \\
+Local-dependence parameter & NMAE $\downarrow$ & 0.647 & 0.861 & +0.213 & 10/10 \\
+Trend strength & NMAE $\downarrow$ & 0.872 & 0.885 & +0.013 & 6/10 \\
+\bottomrule
+\end{tabular}
+}
+\caption{Verified Level-1 final-layer diagnostics across ten models and three
+seeds.  The last row is deliberately retained: its small mean and 6/10 sign
+agreement show that accessibility gains are property-dependent.}
+\label{tab:level1-verified}
+\end{table}
+
+The dominant-period results are the strongest and most consistent.  Local and
+noise properties are also more readable on average, but at lower absolute
+accuracy.  Trend-strength regression provides no comparable cross-model
+pattern.  We interpret these results as differences in linear accessibility;
+they do not show that a model will use the information in forecasting or QA.
+
+\subsection{Native temporal QA is a separate interface}
+
+We test that distinction on the IRTS \texttt{temporal\_relationship} subset.
+An audit found that the legacy native runner right-padded decoder-only batches,
+so generation for shorter prompts began after padding tokens.  We therefore
+withhold all legacy native scores, including the full-prompt condition.  The
+earlier perturbations also used incomplete temporal extraction and inconsistent
+numeric precision.  In the corrected official Qwen3-8B-Base run, accuracy and
+parse coverage are respectively 0.153/0.473 (full), 0.193/0.947
+(question-only), 0.167/0.473 (shuffled), and 0.133/0.473 (reversed).  Unequal
+parse coverage, especially for question-only, prevents attributing the accuracy
+differences to temporal evidence or a language prior.  This is a one-model,
+one-seed interface boundary.
+
+In the first two corrected trained-head diagnostics, DeepSeek-V2-Lite obtains
+balanced accuracy 0.292 with the pretrained temporal branch and 0.294 with the
+random branch under the full condition; official Qwen3-8B-Base obtains 0.348
+and 0.322.  The question-only control is branch-identical by construction
+(0.371 for DeepSeek and 0.390 for Qwen).  Shuffle and reversal do not produce a
+consistent order effect: for example, Qwen's shuffled pretrained score (0.390)
+is above its full score.  These two single-seed results do not show a consistent
+pretrained temporal-branch advantage.  This is a supervised diagnostic with a
+shared fitted head, not native zero-shot QA.
+
+Relation and composition probes use stable, shared pair/split manifests across
+models.  We include their results only when the corrected protocol has complete
+paired coverage; incomplete coverage is not extrapolated to the ten-model
+suite.

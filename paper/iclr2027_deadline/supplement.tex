@@ -1,0 +1,122 @@
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{microtype}
+
+\title{Recognize, Don't Generate:\\ Anonymous Supplementary Material}
+\author{Anonymous Authors}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Scope and reporting policy}
+
+This supplement records the protocols used for the representation and temporal
+QA diagnostics.  We report complete valid tasks regardless of the sign of the
+pretrained--random difference.  A linear probe measures accessibility under
+its readout; it is not treated as evidence that the model understands the
+property or uses it in forecasting or question answering.  Native zero-shot QA
+and diagnostics with a trained head are reported as different interfaces.
+
+\section{Property-specific representation probes}
+
+The Level-1 study contains ten model checkpoints, pretrained and
+same-architecture random initializations, and seeds 7, 17, and 27.  Each of the
+60 frozen-representation caches is reused across property probes.  Samples,
+splits, readout class, and preprocessing are matched within every
+pretrained--random pair.  We aggregate paired differences after orienting every
+metric so that a positive value means that pretraining is better.  Thus the
+difference for balanced accuracy and $R^2$ is pretrained minus random, whereas
+the difference for NMAE is random minus pretrained.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llrrrr}
+\toprule
+Property & Metric & Pretrained & Random & Improvement & Positive models \\
+\midrule
+Dominant period & balanced acc. & 0.715 & 0.364 & +0.351 & 10/10 \\
+Anomaly present & balanced acc. & 0.754 & 0.599 & +0.155 & 10/10 \\
+Local dependence & balanced acc. & 0.460 & 0.331 & +0.129 & 10/10 \\
+Noise level & balanced acc. & 0.542 & 0.436 & +0.107 & 10/10 \\
+Dominant period & NMAE $\downarrow$ & 0.200 & 0.594 & +0.394 & 10/10 \\
+Local parameter & NMAE $\downarrow$ & 0.647 & 0.861 & +0.213 & 10/10 \\
+Trend strength & NMAE $\downarrow$ & 0.872 & 0.885 & +0.013 & 6/10 \\
+\bottomrule
+\end{tabular}
+\caption{Final-layer means across ten models and three seeds.  The mixed trend
+result is retained rather than filtered by its sign.}
+\end{table}
+
+\section{Relation and composition protocol}
+
+Every Level-2 run consumes a seed-specific manifest shared by all models and
+initializations.  Manifest seeds are derived with SHA-256 rather than the
+process-randomized Python hash.  The manifest stores the representation-pool
+hash, sample indices, train/test split, task labels, and protocol hash.  This
+makes the pair and split identity checkable across processes.
+
+The audit changed three task definitions.  First, the unseen-combination C1
+test has constant trend and local labels, so balanced accuracy is reported only
+for label axes with test support for at least two classes.  Second, context-only
+standardization removes the scale information required by the earlier
+volatility-ordering R3 task; R3 is omitted with that reason instead of being
+reported as a valid negative result.  Third, the earlier R7 duplicated R4.  R7
+is now a three-series ordering problem: given an anchor and two candidates, the
+label identifies which candidate is closer in the relevant latent parameter.
+
+Corrected results are written to a versioned directory and are never merged
+with protocol-v1 outputs.  We make no ten-model Level-2 claim until paired
+coverage is complete.
+
+\section{IRTS temporal-relation protocol}
+
+For each of 150 \texttt{temporal\_relationship} items, the adapter extracts the
+prefix values, prefix timestamps, and full timestamps.  The question branch
+contains the question and answer options after removing all labelled temporal
+arrays.  The temporal branch contains only the labelled values and timestamps.
+Question features always come from the pretrained cache in the factorized
+diagnostic; the pretrained and random comparison changes only the temporal
+branch.  Item IDs, features, task types, and gold answers are filtered by one
+shared mask.  A single linear head is fitted on the combined branch training
+features and evaluated separately for the two temporal initializations.
+
+Shuffling and reversal operate on the original numeric lexemes.  They preserve
+sign, exponent, and decimal precision exactly, while timestamps remain
+unchanged.  Answer parsing follows the released evaluator implementation.
+
+The legacy native runner right-padded decoder-only batches, so shorter prompts
+generated after padding tokens.  We withhold all legacy native scores.  Its
+question-only, shuffled, and reversed contrasts also used incomplete temporal
+extraction and inconsistent numeric precision.  The corrected native runner
+uses left padding, exact numeric lexemes, and all labelled value and timestamp
+arrays.  For official Qwen3-8B-Base, accuracy/parse coverage is 0.153/0.473
+(full), 0.193/0.947 (question-only), 0.167/0.473 (shuffled), and 0.133/0.473
+(reversed).  The unequal parse rates prevent a direct language-prior or
+temporal-use interpretation of the accuracy differences.
+
+For the first corrected paired caches, the DeepSeek-V2-Lite shared-head
+diagnostic obtains balanced accuracy 0.292 with the pretrained temporal branch
+and 0.294 with the random branch in the full condition; official Qwen3-8B-Base
+obtains 0.348 and 0.322.  Question-only is branch-identical by construction
+(0.371 and 0.390, respectively).  Shuffle and reversal do not yield a
+consistent order effect; Qwen's shuffled pretrained score (0.390) is above its
+full score.  These two single-seed results do not show a consistent pretrained
+temporal-branch advantage.  This boundary prevents a high probe score on
+synthetic data from being presented as evidence of strong IRTS QA.
+
+\section{Artifact provenance}
+
+The Level-1 table is generated from the 60 per-run CSV shards rather than a
+manually transcribed table.  Corrected Level-1 aggregates, Level-2 manifests,
+and QA outputs are stored beneath a versioned protocol directory.  The paper's
+claim--evidence matrix records, for each quantitative statement, the raw path,
+metric, model scope, seed scope, and protocol version.  Legacy outputs remain
+available for audit but are excluded from corrected aggregates.
+
+\end{document}

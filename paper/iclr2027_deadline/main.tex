@@ -1,0 +1,767 @@
+% ICLR 2027 submission (analysis paper).
+\documentclass{article}
+\usepackage{iclr2027_conference,times}
+\input{math_commands.tex}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newcommand{\model}{\textsc{Qwen3}}
+\newcommand{\probe}{\textsc{LinearProbe}}
+\newcommand{\feat}{\textsc{Feat}}
+\newcommand{\llmprobe}{\textsc{FrozenLLM}}
+\newcommand{\tsp}{\textsc{TS-Encoder}}
+
+\title{Recognize, Don't Generate:\\ Language Pretraining as a Temporal-Structure
+Prior for Time-Series Forecasting}
+
+\author{Anonymous Authors}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Whether language pretraining helps time-series forecasting is disputed: some
+studies report large gains while others find that pretrained language models
+offer no benefit over random initialization or specialized architectures.  We
+separate three questions that end-to-end scores often conflate: whether
+pretraining helps a forecasting model, which temporal properties are linearly
+accessible in frozen representations, and whether a native question-answering
+interface can use those properties.  In matched forecasting experiments,
+pretrained initialization improves the trained forecaster.  Across ten frozen
+backbones, paired with same-architecture random controls over three seeds, the
+largest consistent final-layer gaps occur for dominant period (balanced
+accuracy $0.715$ vs. $0.364$) and period regression (NMAE $0.200$ vs. $0.594$);
+anomaly presence, local dependence, and noise level also improve, while trend
+strength is mixed across models.  These probes establish accessibility, not
+model understanding or successful use by another interface.  In corrected
+shared-head IRTS diagnostics, the first two models show small, inconsistent
+pretrained--random differences.  In a corrected native run, official
+Qwen3-8B-Base obtains 0.153 full-prompt accuracy with 0.473 parse coverage;
+condition-dependent parse coverage prevents a simple language-prior
+interpretation.  Controlled generation and routing experiments further show
+that recognition, numeric continuation, and downstream use can separate.
+The resulting evidence supports a selective
+temporal-structure prior rather than a blanket claim that language models
+understand or solve time-series tasks.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+Large language models (LLMs) are increasingly applied to time-series
+forecasting, either as backbones fine-tuned on numerical text
+\citep{gruver2023large,time-llm2023,qwen-time} or as frozen feature
+encoders \citep{liu2024pre-training,rasul2024lag}.  The central empirical
+question---\emph{does language pretraining actually help forecasting?}---has
+produced sharply conflicting answers.  \citet{tan2024are} report that
+pretrained LLMs do not consistently beat scratch models under their protocol,
+while several 2025--2026 studies \citep{randominit2025,manifold2026} find that
+language pretraining provides a measurable, sometimes large, advantage.  These
+discrepancies are typically attributed to protocol differences (tokenizer,
+backbone, fine-tuning strategy, data leakage), making the literature difficult
+to interpret.
+
+We argue that the conflict is more fundamental.  Forecasting with an LLM
+requires two very different abilities: (i) \emph{recognizing} the temporal
+structure of the observed history (trend, periodicity, volatility, regime) and
+(ii) \emph{generating} numeric values that continue that structure.  Most
+prior work treats these as one capability and evaluates the end-to-end
+forecast, so a failure of either masks the other.  In this paper we
+disentangle them under a tightly controlled protocol and find a striking
+asymmetry:
+
+\begin{center}
+\fbox{\parbox{0.92\linewidth}{\centering
+Language pretraining makes selected temporal properties more linearly
+accessible; numeric generation and native temporal QA can remain weak.}}
+\end{center}
+
+Concretely, we make the following contributions.
+\begin{itemize}
+  \item \textbf{Controlled initialization evidence for pretraining benefit (E1).}
+  Holding architecture, tokenizer, windowing, and fine-tuning protocol
+  identical, and varying only the initialization (pretrained vs.\ random), we
+  confirm that language pretraining improves LoRA-finetuned forecast MSE by
+  $2$--$25\times$ on synthetic and real data, and that this is not a LoRA
+  artifact: with full fine-tuning on Qwen3-0.6B, pretrained initialization is
+  better in all three runs, although the random control is highly variable
+  (ratio of mean MSEs $20.9\times$; one seed is much closer).
+  \item \textbf{A multi-model map of accessible temporal properties.}
+  We pair pretrained and random final-layer representations for ten language
+  models and three seeds.  Period, anomaly presence, local dependence, and
+  noise level show cross-model gains, whereas trend-strength regression is
+  mixed.  We report all valid tasks, including weak and negative results.
+  \item \textbf{Recognition $\gg$ generation on identical windows (E3).}
+  On the same windows, frozen recognition reaches $96$--$98\%$ while frozen
+  greedy generation has parse rates of $27$--$98\%$ and $5$--$10\times$ higher
+  MSE than the oracle expert.  On the official 8B checkpoint, free-form outputs
+  parse on about $99\%$ of 600 evaluated windows while error remains
+  $3.6$--$4.4\times$ the oracle, separating numeric error from parse failure.
+  \item \textbf{Scale and realism (R5, R6).}  The asymmetry holds from
+  $0.6$B to $8$B parameters, and the recognition-based router improves
+  zero-shot expert selection on 15 real-world datasets (ETT, Electricity,
+  Weather, Exchange, Traffic, Illness, M4) and enables patch-level dynamic
+  routing that improves regime-switching windows by $33\%$ while honestly
+  remaining neutral on homogeneous windows.
+  \item \textbf{A boundary test through temporal QA.}  We distinguish native
+  zero-shot IRTS accuracy from a trained-head diagnostic and isolate question
+  and temporal branches.  The corrected one-model native result is weak and
+  parse-sensitive, so we do not treat probe accessibility as QA ability.
+\end{itemize}
+
+\section{Related Work}\label{sec:related}
+
+\textbf{LLMs for time-series forecasting.}  A large body of work fine-tunes or
+prompts LLMs for forecasting \citep{gruver2023large,time-llm2023,qwen-time,
+new2022,zhou2024one}.  \citet{tan2024are} provide a controlled re-analysis and
+find that pretrained LLMs do not consistently help, questioning the language
+prior.  In contrast, \citet{randominit2025} show that with matched protocols,
+language transfer yields a persistent advantage, and \citet{manifold2026}
+analyze Qwen3 and argue that pretraining creates a reusable sequential
+manifold.  Our experiments compare recognition and generation measurements
+without treating their association as proof of a shared causal mechanism.
+
+\textbf{Probing and analysis of pretrained models.}  Linear probing is a
+standard tool for studying representations \citep{alain2016understanding,
+beldon2018measuring}.  Recent work probes LLMs on temporal data
+\citep{liu2024pre-training,tan2024are}.  \citet{manifold2026} probe Qwen3 on
+synthetic dynamics; our layer-wise probes (Section~\ref{sec:layerwise})
+complement this by showing where in the stack the temporal structure lives and
+how forecasting fine-tuning shifts it.  Parallel work on time-series
+foundation models probes \emph{temporal concepts} (trend, periodicity, level)
+inside their representations and studies representation $\to$ concept $\to$
+intervention chains \citep{tsfm_probe2025,tsfm_intervention2025}.  We share
+the representation-probing methodology but ask a different attribution
+question: instead of asking \emph{which} temporal concepts are encoded, we ask
+\emph{whether the language-pretraining prior transfers through the
+recognition interface but not the native numeric-generation interface}, and
+whether the accessible structure is compositionally useful for routing.  Our
+key observation---that the \emph{same} frozen backbone gives opposite
+conclusions under different evaluation interfaces (linear probe vs.\ native
+decoding)---is the contrast that distinguishes this work from prior probing
+analyses.
+
+\textbf{Mixture-of-experts and routing for time series.}  Routing among
+specialized forecasters dates back to forecast combination
+\citep{bates1969combination}.  Modern MoE \citep{shazeer2017outrageously}
+routes tokens to experts; here we route \emph{temporal dynamics} to
+\emph{temporal experts}, using the LLM as a structure recognizer rather than a
+forecaster, echoing the ``Task$\to$Router$\to$Task'' finding of
+\citet{waveTLM2025}.
+
+\section{Controlled Protocol}\label{sec:protocol}
+
+\paragraph{Dynamics.}  We generate labeled windows from five dynamics:
+\emph{trend} (linear slope $+$ noise), \emph{periodic} (sine with period
+$12$ or $24$), \emph{local} (stable AR(1) with $\phi\in[0.7,0.95]$),
+\emph{mixture} (trend $+$ sine), and \emph{regime} (trend in the first $60\%$
+of the context, sine afterward).  Each window has a 64-step context and a
+16-step future, standardized by the context.  The first three are ``clean''
+and the last two are reserved for out-of-distribution (OOD) testing.
+
+\paragraph{Text protocol.}  A frozen LLM reads the context as
+``\texttt{History: +0.12 -0.04 ... Forecast:}'' with values clamped to
+$[-9.99,9.99]$ and two decimals.  The final-token hidden state is the
+representation.
+
+\paragraph{Probe.}  A linear softmax probe is trained on train-window
+representations and evaluated on held-out test windows.  The feature floor uses
+nine hand-crafted statistics (slope, linear $R^2$, volatility, lag-1
+autocorrelation, dominant period/strength, spectral entropy, spectral peak
+concentration, range ratio).
+
+\paragraph{Experts and router.}  Three lightweight univariate experts:
+\emph{trend} (robust linear extrapolation), \emph{periodic} (autocorrelation
+period detection $+$ seasonal naive), and \emph{local} (damped AR(5)).  For
+every window the \emph{oracle} expert is the one with the lowest forecast MSE.
+A router predicts the expert from the representation (probe) or from features.
+
+\paragraph{Models.}  Qwen3-0.6B / 1.7B and official Qwen3-8B-Base checkpoints.
+Random controls use the identical architecture with re-initialized weights.
+
+\section{Results}\label{sec:results}
+
+\subsection{Language pretraining helps forecasting (E1)}
+Table~\ref{tab:e1} summarizes the controlled ablation.  With the only variable
+being initialization, pretrained checkpoints reduce test MSE by $2.2$--$25\times$
+across datasets and seeds, with far lower variance and $100\%$ parse coverage.
+The small-model $2\times2$ (size $\times$ LoRA/full-FT) control confirms the
+gap is not a low-rank artifact: across three seeds of full fine-tuning on
+Qwen3-0.6B, pretrained initialization yields lower MSE in all three runs, but
+random full fine-tuning is highly variable (per-seed ratios $23.7\times$,
+$1.7\times$, $46.5\times$; ratio of mean MSEs $20.9\times$).  This is not
+evidence that pretrained weights already forecast numerically---it shows they
+provide a substantially better starting point for learning the forecasting
+map, which motivates our separation between accessible structure and native
+numeric generation below.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Dataset & Pretrained MSE & Random MSE & Reduction \\
+\midrule
+Synthetic sine & $0.0094\pm0.0006$ & $0.0212\pm0.0011$ & $2.2\times$ \\
+ETTm1 & $0.0099\pm0.0017$ & $0.2453\pm0.1366$ & $25\times$ \\
+ETTh1 & $0.0487\pm0.0097$ & $0.2896\pm0.2059$ & $6\times$ \\
+\bottomrule
+\end{tabular}
+\caption{E1: initialization-only ablation, LoRA, 3 seeds.}
+\label{tab:e1}
+\end{table}
+
+\subsection{Frozen recognition is accurate and scales (E2, R5)}
+Table~\ref{tab:scale} shows recognition accuracy and generation reliability
+across the evaluated model sizes.  Frozen recognition is high at every scale
+and above the matched random controls.  Native numeric generation remains
+several times worse than the oracle expert even when parse coverage is nearly
+complete.  The official Qwen3-8B-Base checkpoint replaces the earlier custom
+8B checkpoint in the reported 8B row.
+
+\begin{table}[t]
+\centering
+\small
+\resizebox{\linewidth}{!}{%
+\begin{tabular}{llcccc}
+\toprule
+Model & Family & Recog. (pre.) & Recog. (rand.) & Gen. parse & Gen. / oracle \\
+\midrule
+DistilGPT2 & GPT & $0.973\pm0.009$ & $0.744\pm0.022$ & $1.000$ & $15.4\times$ \\
+GPT-2 (124M) & GPT & $0.980\pm0.008$ & $0.699\pm0.041$ & $1.000$ & $12.4\times$ \\
+Qwen3-0.6B & Qwen & $0.984\pm0.006$ & $0.789\pm0.010$ & $0.980$ & $9.9\times$ \\
+Qwen3-1.7B & Qwen & $0.979\pm0.011$ & $0.837\pm0.012$ & $0.575$ & $8.1\times$ \\
+Qwen3-8B-Base & Qwen & $0.981\pm0.003$ & $0.904\pm0.025$ & $0.990$ & $4.0\times$ \\
+\bottomrule
+\end{tabular}
+}
+\caption{R5 family $\times$ scale: recognition and generation (3 seeds,
+mean$\pm$std).  Feature floor is $0.99$ for all.  GPT-2/DistilGPT2 parse $100\%$
+of outputs yet are $12$--$15\times$ worse than the oracle expert---the largest
+generation gaps of any family---confirming that generation failure is a
+continuation/regression failure, not a formatting one.}
+\label{tab:scale}
+\end{table}
+
+\paragraph{Cross-family confirmation.}  The recognize-don't-generate pattern
+appears in both evaluated families: GPT-2 and DistilGPT2 have a larger
+pretrained--random recognition gap ($97$--$98\%$ vs.\ $70$--$74\%$ random) and
+the largest generation gaps ($12$--$15\times$ oracle despite $100\%$ parse
+rate).  This cross-family observation broadens the evidence but does not by
+itself identify a shared causal mechanism.
+
+\subsection{Layer-wise structure of the temporal prior (R)}
+\label{sec:layerwise}
+Figure~\ref{fig:layerwise} plots per-layer probe accuracy for frozen
+pretrained vs.\ random Qwen3-0.6B.  Two qualitative differences stand out.
+First, temporal structure is distributed across the stack in the pretrained
+model: recognition rises from chance at the embedding layer to $\sim$93--97\%
+by layer 1 and plateaus at $\sim$98\% through the upper layers.  Second, the
+random same-architecture control peaks early (layer 2--3, $\sim$90\%) and then
+\emph{decays} with depth (down to $\sim$79\% at the final layer).  Language
+pretraining therefore does not merely add a single ``temporal head'': it
+preserves linearly separable temporal structure throughout the depth of the
+network, whereas in a randomly initialized network that structure is confined
+to the shallowest layers.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\linewidth]{figs/fig3_layerwise.pdf}
+\caption{Per-layer linear-probe accuracy on the five dynamics.}
+\label{fig:layerwise}
+\end{figure}
+
+\subsection{Recognize vs.\ generate on identical windows (E3)}
+Table~\ref{tab:e3} shows the paired comparison: the \emph{same} windows are
+classified by the frozen probe and forecast by frozen greedy generation.  The
+recognition accuracy ($96$--$98\%$) contrasts sharply with generation: parse
+coverage varies for the smaller checkpoints and MSE remains well above the
+oracle expert.  The official 8B checkpoint parses nearly every output, yet its
+error is still about four times the oracle on a larger 600-window evaluation
+(Table~\ref{tab:e3b}).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+Model & Recog. acc. & Gen. parse & Gen. MSE & Oracle MSE & Ratio \\
+\midrule
+Qwen3-0.6B & $0.98$ & $0.98$ & $3.31$ & $0.34$ & $9.9\times$ \\
+Qwen3-1.7B & $1.00$ & $0.58$ & $2.73$ & $0.34$ & $8.1\times$ \\
+Qwen3-8B-Base & $0.98$ & $1.00$ & $1.47$ & $0.34$ & $4.4\times$ \\
+\bottomrule
+\end{tabular}
+\caption{E3: paired recognize-vs-generate on identical windows.}
+\label{tab:e3}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Seed & Windows & Parse rate & MSE / oracle \\
+\midrule
+7 & 200 & $0.985$ & $3.60\times$ \\
+17 & 200 & $0.995$ & $4.10\times$ \\
+27 & 200 & $0.990$ & $4.42\times$ \\
+\bottomrule
+\end{tabular}
+\caption{E3b: official Qwen3-8B-Base free-form generation on an expanded
+evaluation.  Near-complete parsing does not remove the numeric error gap.}
+\label{tab:e3b}
+\end{table}
+
+\paragraph{The error gap is stable to numeric precision.}
+Table~\ref{tab:genrob} varies the serialization precision on 100 official-8B
+windows.  Parse coverage remains $98$--$100\%$ and the error ratio remains
+$4.1$--$4.6\times$.  The result isolates this particular formatting choice;
+it does not rule out every possible prompting or decoding protocol.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+Decimal places & Parse & MSE/oracle \\
+\midrule
+1 & $0.990$ & $4.59\times$ \\
+2 & $1.000$ & $4.14\times$ \\
+3 & $0.980$ & $4.20\times$ \\
+\bottomrule
+\end{tabular}
+\caption{E3c: official Qwen3-8B-Base serialization-precision control.}
+\label{tab:genrob}
+\end{table}
+
+\subsection{The asymmetry persists across task difficulty (R)}
+Table~\ref{tab:asym} sweeps context length, noise, and horizon for the frozen
+$0.6$B model on identical windows.  Recognition remains $>90\%$ even under
+heavy noise, and \emph{improves} with horizon ($96.7\%$ at $H{=}8$ to $99.2\%$
+at $H{=}32$).  In contrast, frozen generation stays $6$--$9\times$ worse than
+the oracle expert and its relative gap \emph{grows} with horizon---exactly the
+error-accumulation signature predicted in Section~\ref{sec:analysis}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Axis & Setting & Recog. acc. & Gen. parse & Gen. / oracle \\
+\midrule
+\multirow{3}{*}{Context} & $32$ & $0.942$ & $0.975$ & $5.8\times$ \\
+ & $64$ & $0.983$ & $1.000$ & $7.9\times$ \\
+ & $128$ & $0.983$ & $1.000$ & $8.6\times$ \\
+\midrule
+\multirow{3}{*}{Noise} & $0.05$ & $0.983$ & $1.000$ & $7.9\times$ \\
+ & $0.10$ & $0.958$ & $1.000$ & $7.8\times$ \\
+ & $0.20$ & $0.908$ & $1.000$ & $7.1\times$ \\
+\midrule
+\multirow{3}{*}{Horizon} & $8$ & $0.967$ & $1.000$ & $6.5\times$ \\
+ & $16$ & $0.983$ & $1.000$ & $7.9\times$ \\
+ & $32$ & $0.992$ & $0.875$ & $8.4\times$ \\
+\bottomrule
+\end{tabular}
+\caption{Difficulty sweeps: recognition robust, generation gap grows.}
+\label{tab:asym}
+\end{table}
+
+\subsection{Zero-shot routing: recognition transfers OOD (E4)}
+The probe is trained on the three clean dynamics and evaluated on unseen
+mixture/regime windows.  Because the raw mixture/regime set is dominated by
+trend-oracle windows ($\sim$87\%; local-oracle windows are structurally
+absent), raw oracle-hit accuracy and overall MSE are misleading and
+favourable to a trivial constant-trend policy.  We therefore treat this set as
+a diagnostic (Table~\ref{tab:e4}) and use a \emph{balanced} OOD test as the
+primary evidence (Table~\ref{tab:e4bal}): we rejection-sample mixture/regime
+windows so that the trend-oracle and periodic-oracle classes are equally
+represented (60 each, per seed, no OOD tuning).
+
+On the balanced set, the frozen official Qwen3-8B-Base router reaches
+balanced accuracy $0.764\pm0.035$, macro-$F_1$ $0.775\pm0.032$, and routed MSE
+$0.536$, and is the \emph{only} method that routes both oracle classes
+correctly (trend recall $0.72$, periodic recall $0.81$).  Every alternative is
+far below: a supervised MLP ($0.483$ balanced accuracy, MSE $1.147$), a
+PatchTST encoder ($0.292$, MSE $1.971$), Chronos-T5-small/base ($0.133/0.264$,
+MSE $2.06/1.04$), order-free marginal statistics ($0.475$, MSE $0.789$),
+temporal hand features ($0.436$, MSE $1.129$), a random control ($0.022$, MSE
+$2.885$), and constant-trend ($0.500$, MSE $0.590$).  Paired window-level
+intervals show the Qwen router's MSE is significantly lower than every
+baseline on most seeds (all three seeds for features, PatchTST, both Chronos
+models, and random; two of three seeds for marginal, MLP, and constant-trend).
+The transfer therefore comes from the language-pretrained representation, not
+from being a better supervised classifier nor from the tested
+time-series-pretrained representations.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule
+Router & Raw oracle-hit & MSE \\
+\midrule
+Oracle (upper bound) & --- & $0.447$ \\
+Constant trend & $\sim0.87$ & $0.500$ \\
+Hand features & $0.133$ & $1.222$ \\
+Random Qwen probe & $0.278$ & $1.098$ \\
+\textbf{Frozen Qwen3-8B-Base} & $0.864$ & $0.538$ \\
+\bottomrule
+\end{tabular}
+\caption{E4 imbalanced-set diagnostic (mixture/regime, 3 seeds pooled): raw
+metrics are dominated by the majority (trend) oracle class and a constant-trend
+policy already achieves high raw accuracy; see Table~\ref{tab:e4bal} for the
+balanced test.}
+\label{tab:e4}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Representation & Balanced acc. & Macro-$F_1$ & MSE & Rec.\ T/P \\
+\midrule
+\textbf{Frozen Qwen3-8B-Base} & $\mathbf{0.764}$ & $\mathbf{0.775}$ & $\mathbf{0.536}$ & $0.72/0.81$ \\
+Constant trend & $0.500$ & $0.333$ & $0.590$ & $1.00/0.00$ \\
+Marginal statistics & $0.475$ & $0.355$ & $0.789$ & $0.93/0.02$ \\
+MLP & $0.483$ & $0.549$ & $1.147$ & $0.64/0.32$ \\
+Hand features & $0.436$ & $0.303$ & $1.129$ & $0.00/0.87$ \\
+Chronos-T5-base & $0.264$ & $0.232$ & $1.038$ & $0.48/0.04$ \\
+PatchTST & $0.292$ & $0.403$ & $1.971$ & $0.26/0.32$ \\
+Chronos-T5-small & $0.133$ & $0.182$ & $2.056$ & $0.23/0.04$ \\
+Random Qwen3-8B & $0.022$ & $0.037$ & $2.885$ & $0.04/0.00$ \\
+\bottomrule
+\end{tabular}
+\caption{E4 balanced OOD test: trend/periodic-oracle balanced (60 each, 3
+seeds pooled), official Qwen3-8B-Base.  Balanced accuracy, macro-$F_1$, routed
+MSE, and per-class recall.  Qwen is the only method covering both oracle
+classes.}
+\label{tab:e4bal}
+\end{table}
+
+\paragraph{Imbalanced-set diagnostic (honest caveat).}
+On the raw mixture/regime set (Table~\ref{tab:e4}), the oracle is trend-
+dominated and raw metrics are dominated by the majority class: constant-trend
+achieves $\sim$87\% raw oracle-hit and MSE $0.50$; the official Qwen router
+reaches $86.4\%$ raw oracle-hit and MSE $0.538$ (better than random $0.278$ and
+features $0.133$), and its paired MSE is not reliably below constant-trend
+(significant only on one of three seeds).  We therefore do \emph{not} claim
+that routing reduces MSE on this benchmark; the balanced test in
+Table~\ref{tab:e4bal} is the evidence for compositional recognition transfer.
+
+\paragraph{A pretrained \emph{time-series} encoder does not transfer OOD.}
+To answer ``does this need a language model, or would a pretrained
+\emph{time-series} foundation model do?'' we probe Chronos-T5
+\citep{ansari2024chronos} with the identical linear-probe protocol.  Chronos
+recognizes all five dynamics essentially perfectly in-domain ($99.7$--$100\%$),
+yet on the balanced OOD test it routes at $0.13$--$0.26$ balanced accuracy and
+MSE $1.0$--$2.1$, far below the frozen language model.  A representation
+optimized for forecasting is therefore not what supports \emph{cross-dynamics}
+recognition transfer; that capability comes specifically from language
+pretraining.
+
+\subsection{Real-world zero-shot routing (R6)}
+We apply the router, trained only on synthetic clean dynamics, to 15 real-world
+datasets (Table~\ref{tab:real}).  The frozen LLM router is best or near-best on
+most datasets and is especially strong where feature routers collapse (e.g.,
+Exchange rate: LLM MSE $0.037$ vs.\ feature $1.591$).  We also report honest
+failures: on M4 macro series and some energy data the small $0.6$B router does
+not beat the degenerate ``always-local'' baseline, showing that recognition
+transfer requires sufficient scale and that routing helps most when dynamics
+are heterogeneous.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Dataset & Oracle & Best single & Feature & Frozen LLM \\
+\midrule
+ETTm1 & $0.011$ & periodic/$0.015$ & $0.521$ & $\mathbf{0.102}$ \\
+ETTh1 & $0.028$ & periodic/$0.045$ & $0.581$ & $\mathbf{0.093}$ \\
+Exchange & $0.017$ & periodic/$0.027$ & $1.591$ & $\mathbf{0.037}$ \\
+Weather & $0.021$ & periodic/$0.025$ & $0.482$ & $\mathbf{0.319}$ \\
+Traffic & $0.680$ & periodic/$0.883$ & $0.771$ & $0.913$ \\
+Illness & $0.554$ & trend/$1.067$ & $4.620$ & $\mathbf{1.050}$ \\
+\midrule
+Electricity & $0.407$ & local/$0.855$ & $\mathbf{0.740}$ & $0.819$ \\
+ETTh2 & $0.114$ & periodic/$0.211$ & $\mathbf{0.610}$ & $0.436$ \\
+M4 (6 freqs) & --- & --- & best & \emph{not better} \\
+\bottomrule
+\end{tabular}
+\caption{R6: zero-shot routing MSE on real datasets, 0.6B.}
+\label{tab:real}
+\end{table}
+
+\paragraph{Scale improves real-data routing.}
+The $8$B router (full table in Appendix~\ref{app:real8}) is stronger on the
+same datasets: ETTh1 MSE $0.045$ (vs.\ feature $0.581$, $13\times$), ETTh2
+$0.220$ (vs.\ $0.610$), ETTm1 $0.016$ (vs.\ $0.521$, $33\times$), Exchange
+$0.028$ (vs.\ $1.591$, $58\times$), Weather $0.041$ (vs.\ $0.482$), Illness
+$1.455$ (vs.\ $4.620$).  Across three router-training seeds on the same
+evaluation windows, the LM router shows \emph{seven nominally significant}
+gains (ETT$\times$4, Exchange, Weather, Illness), seven nominally significant
+losses (Electricity, Traffic, and five M4 frequencies), and one inconclusive
+comparison (M4-Hourly); no multiple-comparison correction is applied and these
+real-data results are treated as an exploratory boundary check.  On the
+periodic-dominated datasets (ETTm2, Weather, Exchange) the ``always-periodic''
+degenerate baseline is near-optimal and the LLM router matches it without
+harm; on Electricity and Traffic the feature router remains better; and on M4
+both routers fail, showing that recognition transfer requires diverse
+structure and does not hold universally.  The cross-family pattern is the
+same: a GPT-2 router trained only on synthetic clean dynamics beats the
+feature router on 8 of 15 real datasets, confirming that recognition transfer
+is a property of language pretraining rather than of a specific model family.
+
+\paragraph{The routing advantage holds at longer horizons.}
+Table~\ref{tab:horizon} re-evaluates the $8$B router at horizons 24 and 48
+(hidden states depend only on the context, so the same representations are
+reused).  The frozen-LLM router beats the feature router on the same four of
+five datasets at both horizons, tracking the best-single expert closely (e.g.,
+Exchange H$=48$: $0.060$ vs.\ best $0.060$; ETTh1 H$=48$: $0.083$ vs.\ $0.071$),
+and only Electricity remains favorable to features---exactly as at $H{=}16$.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llcccc}
+\toprule
+Dataset & Horizon & Oracle & Best single & Feature & Frozen LLM \\
+\midrule
+\multirow{2}{*}{ETTm1} & $24$ & $0.015$ & $0.019$ & $0.596$ & $\mathbf{0.028}$ \\
+ & $48$ & $0.027$ & $0.034$ & $0.757$ & $\mathbf{0.051}$ \\
+\multirow{2}{*}{ETTh1} & $24$ & $0.035$ & $0.056$ & $0.672$ & $\mathbf{0.061}$ \\
+ & $48$ & $0.050$ & $0.071$ & $0.842$ & $\mathbf{0.083}$ \\
+\multirow{2}{*}{Weather} & $24$ & $0.035$ & $0.044$ & $0.521$ & $\mathbf{0.123}$ \\
+ & $48$ & $0.112$ & $0.148$ & $0.579$ & $\mathbf{0.317}$ \\
+\multirow{2}{*}{Exchange} & $24$ & $0.026$ & $0.036$ & $1.944$ & $\mathbf{0.036}$ \\
+ & $48$ & $0.046$ & $0.060$ & $2.497$ & $\mathbf{0.060}$ \\
+\multirow{2}{*}{Electricity} & $24$ & $0.465$ & $0.792$ & $\mathbf{0.668}$ & $0.818$ \\
+ & $48$ & $0.576$ & $0.910$ & $\mathbf{0.792}$ & $0.943$ \\
+\bottomrule
+\end{tabular}
+\caption{R6: zero-shot routing MSE at horizons 24/48 (8B).  The LLM router
+wins on 4/5 datasets at both horizons.}
+\label{tab:horizon}
+\end{table}
+
+\subsection{Patch-level dynamic routing (E6)}
+Routing per patch rather than per window lets the model switch experts as
+dynamics change (Table~\ref{tab:e6}).  On regime-switching windows dynamic
+routing reduces MSE by $33\%$ relative to the best static router and by $20\%$
+on local windows, while remaining neutral on stationary windows---a clean
+statement of when dynamic routing helps.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Window kind & Static best & Dynamic router & $\Delta$ \\
+\midrule
+Regime & $0.82$ & $0.55$ & $-33\%$ \\
+Local & $1.00$ & $0.80$ & $-20\%$ \\
+Stationary & $1.00$ & $1.00$ & $0\%$ \\
+\bottomrule
+\end{tabular}
+\caption{E6: patch-level dynamic routing (normalized MSE).}
+\label{tab:e6}
+\end{table}
+
+\input{verified_diagnostics.tex}
+
+\section{Analysis: Why Recognition Transfers but Generation Fails}\label{sec:analysis}
+
+We offer a functional decomposition.  Recognizing temporal structure requires
+the model to map the observed context to a low-dimensional set of ``kinds''
+(\emph{trend-like}, \emph{periodic}, \emph{noise-dominated}).  In our evaluated
+checkpoints, such distinctions are more linearly separable after language
+pretraining and sometimes transfer to OOD dynamics.  In contrast, generating
+future numeric values requires (a) a correct serialization/tokenization of
+numbers, (b) precise extrapolation under distribution shift, and (c) exact
+regression over a continuous target---precisely the skills language modeling
+does not optimize.  The generation failures we observe (low parse coverage,
+multiplicative MSE) are consistent with this decomposition, and the persistence
+of the gap under constrained decoding isolates the regression/continuation
+failure from formatting.
+
+\paragraph{Formalization sketch (P2).}  Let $R_\theta$ be the recognition map
+and $G_\theta$ the generation map of an LLM.  Treat classification as a
+margin problem over $\{0,1\}^K$ and generation as iterated autoregression with
+error accumulation rate $\rho$.  Recognition robustness requires only a margin
+$\gamma>0$ at the linear probe; generation error can grow as $\rho^H$ in
+horizon $H$.  This sketch is consistent with an asymmetry when $\rho^H$
+dominates the classification margin, including the horizon sweep in the
+appendix, but it does not identify the mechanism.  It also predicts \emph{when}
+routing helps: when dynamics are heterogeneous (mixtures, regime switches), the
+oracle-expert variance is large and recognition-based routing captures most of
+the gains; when dynamics are homogeneous, the best single expert is nearly
+optimal and routing is neutral---consistent with E6.
+
+\section{Limitations}\label{sec:limits}
+
+Our controlled setup uses synthetic dynamics and three univariate experts; the
+real-data routing inherits this simplicity.  Model families and sizes differ
+in more than parameter count, so the scale table is descriptive rather than a
+scaling-law estimate.  The M4 result shows that recognition transfer does not hold
+universally at small scale.  Linear probes measure accessibility under a
+specific readout and do not establish semantic understanding or use by a
+generative interface.  The current corrected IRTS trained-head result covers
+one task type, two models, and one seed; corrected native zero-shot coverage is
+one model and one seed.  Finally, we study frozen recognition;
+how recognition evolves during fine-tuning is analyzed in the appendix but
+deserves further study.
+
+\section{Conclusion}\label{sec:conclusion}
+
+The debate over whether language pretraining helps time-series forecasting is,
+we argue, partly a debate over which capability---recognition or
+generation---is being measured.  Under a controlled protocol, language
+pretraining helps the trained forecaster and makes several temporal properties
+more accessible to linear readouts, but the effect is selective across
+properties and interfaces.  Frozen numeric generation remains fragile, while
+the corrected trained-head temporal QA diagnostic shows no consistent gain and
+the corrected one-model native result is weak and parse-sensitive.  These separations motivate
+measuring representation, interface use, and forecasting behavior independently
+rather than treating any one of them as evidence for the others.
+
+\bibliographystyle{iclr2027_conference}
+\bibliography{refs}
+
+\appendix
+\section{Additional analyses}\label{app:extra}
+
+\subsection{Pre- vs.\ post-fine-tuning representation}
+\label{app:prepost}
+Loading a LoRA adapter from E1 (fine-tuned on ETTm1 forecasting) onto the
+frozen $8$B backbone and re-probing the \emph{same} synthetic windows shows
+that forecasting fine-tuning does \emph{not} erode recognition: probe accuracy
+rises from $0.967$ (frozen) to $0.983$ (post-FT), with the largest gains on
+local ($0.95{\to}0.98$) and mixture ($0.92{\to}0.98$) windows.  The
+representation itself shifts substantially (mean abs delta $0.69$; linear CKA
+$0.45$; probe-direction cosine $0.08$), i.e., fine-tuning rewrites the
+recognition geometry while preserving---even sharpening---the underlying
+separability.
+
+\subsection{Difficulty sweeps (context, noise, horizon)}
+\label{app:asym}
+See Table~\ref{tab:asym} in the main text.  Recognition degrades only mildly
+under noise ($0.98$ at $\sigma{=}0.05$ to $0.91$ at $\sigma{=}0.2$) and
+improves with horizon, while the generation/oracle MSE ratio stays $6$--$9\times$
+and grows with horizon ($6.5\times$ at $H{=}8$ to $8.4\times$ at $H{=}32$).
+
+\subsection{Tokenizer / template ablations}
+\label{app:tok}
+Prior work in this project (summarized in
+Appendix~\ref{app:random_bpe}) showed that when a random-BPE tokenizer is
+applied to numeric text, the model collapses to degenerate outputs, whereas
+fixed-width two-decimal numeric tokens (our protocol) keep generation
+parseable; the recognition probe is insensitive to this choice.  This isolates
+the tokenization contribution to the generation failure channel.
+
+\subsection{Full real-data table (8B)}
+\label{app:real8}
+See Table~\ref{tab:real8}.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Dataset & Feature MSE & Frozen-LLM MSE & Best single \\
+\midrule
+Electricity & $\mathbf{0.740}$ & $0.927$ & local/$0.855$ \\
+ETTh1 & $0.581$ & $\mathbf{0.045}$ & periodic/$0.045$ \\
+ETTh2 & $0.610$ & $\mathbf{0.220}$ & periodic/$0.211$ \\
+ETTm1 & $0.521$ & $\mathbf{0.016}$ & periodic/$0.015$ \\
+ETTm2 & $0.327$ & $0.114$ & periodic/$0.064$ \\
+Exchange & $1.591$ & $\mathbf{0.028}$ & periodic/$0.027$ \\
+Illness & $4.620$ & $\mathbf{1.455}$ & trend/$1.067$ \\
+Traffic & $\mathbf{0.771}$ & $0.916$ & periodic/$0.883$ \\
+Weather & $0.482$ & $\mathbf{0.041}$ & periodic/$0.025$ \\
+M4-Daily & $\mathbf{1.244}$ & $1.826$ & local/$1.213$ \\
+M4-Hourly & $214.8$ & $\mathbf{214.0}$ & periodic/$214.0$ \\
+M4-Weekly & $\mathbf{1.419}$ & $2.524$ & local/$1.419$ \\
+M4-Monthly & $\mathbf{1.218}$ & $2.140$ & local/$1.218$ \\
+M4-Quarterly & $\mathbf{1.233}$ & $1.996$ & local/$1.233$ \\
+M4-Yearly & $\mathbf{1.164}$ & $1.938$ & local/$1.164$ \\
+\bottomrule
+\end{tabular}
+\caption{R6 full: official Qwen3-8B-Base zero-shot routing MSE across 15
+datasets (seed 7, 300 windows per dataset).}
+\label{tab:real8}
+\end{table}
+
+\paragraph{Real-data window sampling.}
+For each non-M4 dataset we sample up to $300$ test windows by drawing
+non-overlapping start positions uniformly at random without replacement
+(context length $64$, horizon $16$), so windows within a dataset do not
+overlap; each window is normalized using only its own context statistics.
+ETT datasets use the standard $12/4/4$ month split; the remaining datasets use
+a $70/30$ chronological split.  Because consecutive starts are drawn without
+replacement from the available range, the effective stride is large relative
+to the window length, and we report window-level bootstrap intervals
+accordingly.
+
+\paragraph{M4 evaluation protocol.}
+M4 windows are sampled \emph{within the official training series} rather than
+the official test series for two reasons: (i) the official competition
+horizons ($6$--$48$, depending on frequency) differ from the uniform $H{=}16$
+protocol used here, and (ii) using the short official test series would yield
+far too few $C{=}64,H{=}16$ rolling windows for a stable evaluation.  This is
+therefore a boundary-transfer diagnostic over many real macro series, not a
+leaderboard evaluation.
+
+\paragraph{Numerical parser.}
+Generated completions are parsed with the regular expression
+\texttt{(?<![0-9])[+-]?$\backslash$d+$\backslash$.$\backslash$d\{2\}} (any number
+of integer digits, exactly two decimals, with a digit boundary), taking the
+first $H$ matches.  An audit of all raw completions across models and seeds
+found \emph{zero} generated values with magnitude $\geq 10$ and zero windows
+where a one-digit-integer parser would have differed, so the reported parse
+rates and MSEs are unaffected by the integer-width choice.
+
+\subsection{Random-BPE tokenizer ablation}
+\label{app:random_bpe}
+We trained a BPE tokenizer on shuffled/random text and applied it to the same
+numeric forecasting protocol.  Under this tokenizer, frozen generation
+collapses (parse rate near zero), while the recognition probe is unaffected.
+This confirms that the generation failure channel includes a tokenization
+component---absent in our main protocol---and that recognition is robust to it.
+
+\subsection{Statistical details}
+\label{app:bootstrap}
+We report 95\% nonparametric percentile bootstrap confidence intervals from
+2,000 resamples.  In contrast to a seed-level analysis, the resampling unit is
+the \emph{individual evaluation window}: all per-window outcomes are pooled
+across seeds (3 seeds for Qwen3-8B; 5 seeds for Qwen3-0.6B) and resampled
+with replacement.  The generation ratio is bootstrapped as a ratio of sums
+($\sum\text{MSE}/\sum\text{oracle}$), matching the point estimate reported in
+the main text.
+
+For Qwen3-8B (pooled over 360 routing windows), pretrained routing accuracy is
+$0.681$ [0.633, 0.728], random routing $0.286$ [0.239, 0.336], and feature
+routing $0.133$ [0.100, 0.172]; the three intervals do not overlap.
+Recognition is $0.963$ [0.951, 0.974] (pretrained) vs.\ $0.906$ [0.886, 0.923]
+(random).  Routed MSE is $0.745$ [0.677, 0.815] (pretrained), $1.053$
+[0.979, 1.129] (random), $1.222$ [1.148, 1.295] (feature), with an oracle of
+$0.447$ [0.423, 0.471].  The window-level generation/oracle ratio is $5.28\times$
+[3.22, 9.83].
+
+For Qwen3-0.6B (pooled over 600 routing windows), pretrained routing is
+$0.337$ [0.298, 0.375] vs.\ random $0.217$ [0.183, 0.250] vs.\ feature $0.162$
+[0.132, 0.192]; recognition $0.984$ [0.977, 0.989] vs.\ $0.789$ [0.769, 0.809];
+and the generation/oracle ratio is $9.64\times$ [7.52, 12.33].
+The window-level intervals confirm the same ordering at both scales.
+
+\end{document}
