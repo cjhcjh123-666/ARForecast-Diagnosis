@@ -4,3 +4,21 @@ __pycache__/
 results/*
 !results/.gitkeep
 api.txt
+
+# Local credentials, downloaded checkpoints, and runtime-only artifacts.
+.proxycfg/
+logs/
+models/
+qwen_feats/
+qwen_feats_10s/
+
+# Review archives are opt-in; keep the reproducible Real-TSQA bundle only.
+*.zip
+!deliverables/Real_TSQA_Evidence_v1_review.zip
+deliverables/.real_tsqa_review_stage/
+
+# LaTeX build intermediates (compiled PDFs remain reviewable artifacts).
+*.aux
+*.blg
+*.log
+*.out

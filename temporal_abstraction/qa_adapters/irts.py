@@ -21,8 +21,34 @@ SOURCE = Path("/9950backfile/chenjiahui/ChatTS-Training-main/WaveTLM/third_party
               "IRTS-ToolBench/benchmark/irts_cleaned_benchmark.parquet")
 LABELS = {"multiple_choice_abcd": ["A", "B", "C", "D"], "multiple_choice_abc": ["A", "B", "C"],
           "multiple_choice_ab": ["A", "B"], "true_false": ["T", "F"]}
-SERIES_RE = re.compile(r"(\[[^\[\]]*\])")
+TEMPORAL_BLOCK_RE = re.compile(
+    r"(?im)^(?P<name>(?:prefix|full)?\s*(?:irregular\s+)?(?:time series|timestamps?))"
+    r"\s*:\s*(?P<array>\[[^\[\]\r\n]*\])"
+)
 NUM_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+
+def extract_temporal_blocks(question: str) -> list[dict[str, Any]]:
+    """Return every labelled series/timestamp array and its exact source span.
+
+    IRTS temporal-relationship items contain three relevant arrays (prefix values, prefix times,
+    and full times).  The legacy adapter kept only the first bracketed array.
+    """
+    return [
+        {
+            "name": m.group("name"),
+            "array": m.group("array"),
+            "start": m.start("array"),
+            "end": m.end("array"),
+        }
+        for m in TEMPORAL_BLOCK_RE.finditer(question)
+    ]
+
+
+def prepare_item(item: dict[str, Any]) -> dict[str, Any]:
+    item = dict(item)
+    item["temporal_blocks"] = extract_temporal_blocks(item["question"])
+    return item
 
 
 def load_items() -> list[dict[str, Any]]:
@@ -30,12 +56,9 @@ def load_items() -> list[dict[str, Any]]:
     items = []
     for _, r in df.iterrows():
         q = str(r["question"])
-        m = SERIES_RE.search(q)
-        series_str = m.group(1) if m else ""
-        items.append(dict(id=int(r["question_id"]), task_type=str(r["task_type"]), question=q,
-                          series_str=series_str, pre=q[:m.start()] if m else q,
-                          post=q[m.end():] if m else "",
-                          answer_format=str(r["answer_format"]), gold=str(r["answer"]).strip()))
+        item = dict(id=int(r["question_id"]), task_type=str(r["task_type"]), question=q,
+                    answer_format=str(r["answer_format"]), gold=str(r["answer"]).strip())
+        items.append(prepare_item(item))
     return items
 
 
@@ -46,8 +69,71 @@ def _values(series_str: str) -> list:
         return [float(x) if x not in ("None", "null", "nan") else None for x in NUM_RE.findall(series_str)]
 
 
-def _fmt(values) -> str:
-    return json.dumps([None if v is None else round(float(v), 2) for v in values])
+def _array_lexemes(array: str) -> list[str]:
+    inner = array.strip()[1:-1]
+    return [part.strip() for part in inner.split(",")] if inner.strip() else []
+
+
+def _permute_array(array: str, seed: int, reverse: bool = False) -> str:
+    """Reorder exact lexical values; never round or reformat them."""
+    values = _array_lexemes(array)
+    movable = [i for i, value in enumerate(values) if value.lower() not in {"none", "null", "nan"}]
+    if reverse:
+        reordered = list(reversed([values[i] for i in movable]))
+    else:
+        import numpy as np
+        rng = np.random.default_rng(seed)
+        reordered = [values[i] for i in np.asarray(movable)[rng.permutation(len(movable))]]
+    out = list(values)
+    for pos, value in zip(movable, reordered):
+        out[pos] = value
+    return "[" + ", ".join(out) + "]"
+
+
+def _replace_blocks(question: str, replacements: list[str]) -> str:
+    blocks = extract_temporal_blocks(question)
+    if len(blocks) != len(replacements):
+        raise ValueError("temporal block/replacement count mismatch")
+    out, cursor = [], 0
+    for block, replacement in zip(blocks, replacements):
+        out.extend((question[cursor:block["start"]], replacement))
+        cursor = block["end"]
+    out.append(question[cursor:])
+    return "".join(out)
+
+
+def render_question(item: dict[str, Any]) -> str:
+    """Question branch with every labelled temporal array removed."""
+    blocks = extract_temporal_blocks(item["question"])
+    text = _replace_blocks(item["question"], ["[temporal evidence omitted]"] * len(blocks))
+    return text.strip() + answer_suffix(item)
+
+
+def render_temporal(item: dict[str, Any], condition: str = "full", seed: int = 0) -> str:
+    """Temporal branch containing labelled values/times and no question or answer choices."""
+    blocks = extract_temporal_blocks(item["question"])
+    if condition == "question_only":
+        return "Temporal evidence: [not available]"
+    lines = []
+    for block in blocks:
+        array = block["array"]
+        is_series = "series" in block["name"].lower()
+        if is_series and condition == "shuffled_ts":
+            array = _permute_array(array, 1000 + seed + int(item["id"]))
+        elif is_series and condition == "reversed_ts":
+            array = _permute_array(array, 0, reverse=True)
+        elif condition not in {"full", "shuffled_ts", "reversed_ts"}:
+            raise ValueError(condition)
+        lines.append(f"{block['name']}: {array}")
+    return "\n".join(lines)
+
+
+def series_lexemes(text: str) -> list[str]:
+    values = []
+    for block in extract_temporal_blocks(text):
+        if "series" in block["name"].lower():
+            values.extend(_array_lexemes(block["array"]))
+    return values
 
 
 INSTRUCTION = {
@@ -79,35 +165,71 @@ def render(item: dict, condition: str = "full", seed: int = 0) -> str:
     shuffled_ts   : same values, random temporal order (multiset preserved, None positions kept)
     reversed_ts   : values reversed in time
     """
+    blocks = extract_temporal_blocks(item["question"])
     if condition == "full":
-        return item["question"] + answer_suffix(item)
-    if condition == "question_only":
-        return (item["pre"] + "[the time series is not available]" + item["post"]).strip() + answer_suffix(item)
-    vals = _values(item["series_str"])
-    if condition == "shuffled_ts":
-        import numpy as np
-        rng = np.random.default_rng(1000 + seed + item["id"])
-        idx = [i for i, v in enumerate(vals) if v is not None]
-        perm = rng.permutation(len(idx))
-        out = list(vals)
-        for pos, src in zip(idx, [idx[p] for p in perm]):
-            out[pos] = vals[src]
-        vals = out
-    elif condition == "reversed_ts":
-        vals = list(reversed(vals))
+        question = item["question"]
+    elif condition == "question_only":
+        question = _replace_blocks(item["question"], ["[temporal evidence omitted]"] * len(blocks))
+    elif condition in {"shuffled_ts", "reversed_ts"}:
+        replacements = []
+        for block in blocks:
+            if "series" not in block["name"].lower():
+                replacements.append(block["array"])
+            elif condition == "shuffled_ts":
+                replacements.append(_permute_array(
+                    block["array"], 1000 + seed + int(item["id"])
+                ))
+            else:
+                replacements.append(_permute_array(block["array"], 0, reverse=True))
+        question = _replace_blocks(item["question"], replacements)
     else:
         raise ValueError(condition)
-    return item["pre"] + _fmt(vals) + item["post"] + answer_suffix(item)
+    return question.strip() + answer_suffix(item)
+
+
+_ANSWER_MARKER_RE = re.compile(
+    r"(?im)\b(?:final answer|answer|choice)\s*[:\-]?\s*\**\s*(true|false|[a-e]|[tf])\b"
+)
+_STANDALONE_LINE_RE = re.compile(r"(?im)^\s*\**\s*(true|false|[a-e]|[tf])\s*\**\s*$")
+_BOLDED_TOKEN_RE = re.compile(r"(?i)\*\*\s*(true|false|[a-e]|[tf])\s*\*\*")
+_LEADING_TOKEN_RE = re.compile(r"(?i)^\s*[\(\[\{<\"'`*_#-]*\s*(true|false|[a-e]|[tf])\b")
+_TRAILING_TOKEN_RE = re.compile(
+    r"(?i)\b(true|false|[a-e]|[tf])\b\s*[\)\]\}>\'\"`*_.!?,:;~-]*\s*$"
+)
+
+
+def _normalize_answer(candidate: str, answer_format: str) -> str | None:
+    value = candidate.strip().lower()
+    if answer_format == "true_false":
+        return "T" if value in {"t", "true"} else "F" if value in {"f", "false"} else None
+    token = value.upper()
+    return token if len(token) == 1 and token in LABELS.get(answer_format, []) else None
 
 
 def parse(text: str, answer_format: str) -> str | None:
-    """Official label alphabet; first standalone label wins (case-insensitive)."""
-    labels = LABELS.get(answer_format, ["A", "B", "C", "D"])
-    up = text.strip().upper()
-    for lab in labels:
-        if re.search(rf"(^|[^A-Z]){lab}([^A-Z]|$)", up):
-            return lab
-    return None
+    """Match the released IRTS evaluator's final-answer extraction protocol."""
+    stripped = text.strip()
+    if not stripped:
+        return None
+    candidates = (stripped[-256:], "\n".join(stripped.splitlines()[-8:]), stripped)
+    for candidate_text in candidates:
+        for pattern in (_ANSWER_MARKER_RE, _STANDALONE_LINE_RE, _BOLDED_TOKEN_RE,
+                        _TRAILING_TOKEN_RE):
+            for candidate in reversed(pattern.findall(candidate_text)):
+                token = _normalize_answer(candidate, answer_format)
+                if token is not None:
+                    return token
+    leading = _LEADING_TOKEN_RE.match(stripped)
+    if leading:
+        token = _normalize_answer(leading.group(1), answer_format)
+        if token is not None:
+            return token
+    normalized = stripped.lower()
+    if normalized.startswith("option "):
+        token = _normalize_answer(normalized.rsplit(" ", 1)[-1], answer_format)
+        if token is not None:
+            return token
+    return _normalize_answer(normalized, answer_format)
 
 
 def is_correct(pred: str | None, gold: str) -> bool:

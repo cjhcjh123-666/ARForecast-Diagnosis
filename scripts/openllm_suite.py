@@ -67,8 +67,18 @@ def load_lm(path, init, seed, device, trust_remote_code=True):
         _mu.ALL_PARALLEL_STYLES=frozenset({"tp","block","sharded","pp","sequence","rowwise","colwise",
             "naive","serial","manual","flex","ddp","colwise_rep","rowwise_rep","colwise_sharded",
             "rowwise_sharded","local_colwise","local_rowwise","gather","local","replicate"})
-    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
-    tok=AutoTokenizer.from_pretrained(path, trust_remote_code=trust_remote_code)
+    from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, PreTrainedTokenizerFast
+    try:
+        tok=AutoTokenizer.from_pretrained(path, trust_remote_code=trust_remote_code)
+    except (ImportError, ValueError):
+        # Some official snapshots (notably Mistral-7B-v0.3) declare the slow
+        # LlamaTokenizer although they include a complete official tokenizer.json.
+        # The shared runtime lacks sentencepiece/protobuf; loading that exact JSON
+        # through the generic fast wrapper preserves the tokenizer data and avoids
+        # substituting a different tokenizer.
+        if not (Path(path) / "tokenizer.json").is_file():
+            raise
+        tok=PreTrainedTokenizerFast.from_pretrained(path)
     if tok.pad_token_id is None: tok.pad_token=tok.eos_token
     # NOTE: the attention implementation MUST be identical for pretrained and random,
     # otherwise the two branches run different inference code. gemma2 under sdpa+static
