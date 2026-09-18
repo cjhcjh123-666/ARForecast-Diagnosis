@@ -1,0 +1,43 @@
+check,scope,value,verdict,note
+duplicate_series_in_pool,seed7,0,PASS,
+train_test_index_overlap_targets,seed7,0,PASS,
+train_test_duplicate_series,seed7,0,PASS,
+param_train_test_KS,seed7:P2b_trend_strength_reg,0.0717,PASS,
+param_train_test_KS,seed7:P4b_dominant_period_reg,0.004,PASS,
+param_train_test_KS,seed7:P5b_local_dependence_reg,0.0017,PASS,
+prompt_template_only,seed7,1,PASS,
+prompt_label_text_leakage,seed7,0,PASS,
+unseen_signature_collision,seed7,0,PASS,"REGIME is excluded from the signature probe (shares (1,1,0) with TP) and used for the arrangement probe instead"
+metadata_outside_input,seed7,1,PASS,probes read frozen representations of ctx only; latents live in pool_s*.jsonl
+binary_label_balance,seed7:P1_trend_direction,0.512,PASS,
+binary_label_balance,seed7:P3_periodicity_present,0.667,PASS,
+binary_label_balance,seed7:P7_anomaly_present,0.5,PASS,
+binary_label_balance,seed7:P9_changepoint_present,0.5,PASS,
+duplicate_series_in_pool,seed17,0,PASS,
+train_test_index_overlap_targets,seed17,0,PASS,
+train_test_duplicate_series,seed17,0,PASS,
+param_train_test_KS,seed17:P2b_trend_strength_reg,0.0867,PASS,
+param_train_test_KS,seed17:P4b_dominant_period_reg,0.0033,PASS,
+param_train_test_KS,seed17:P5b_local_dependence_reg,0.0033,PASS,
+prompt_template_only,seed17,1,PASS,
+prompt_label_text_leakage,seed17,0,PASS,
+unseen_signature_collision,seed17,0,PASS,"REGIME is excluded from the signature probe (shares (1,1,0) with TP) and used for the arrangement probe instead"
+metadata_outside_input,seed17,1,PASS,probes read frozen representations of ctx only; latents live in pool_s*.jsonl
+binary_label_balance,seed17:P1_trend_direction,0.528,PASS,
+binary_label_balance,seed17:P3_periodicity_present,0.667,PASS,
+binary_label_balance,seed17:P7_anomaly_present,0.5,PASS,
+binary_label_balance,seed17:P9_changepoint_present,0.5,PASS,
+duplicate_series_in_pool,seed27,0,PASS,
+train_test_index_overlap_targets,seed27,0,PASS,
+train_test_duplicate_series,seed27,0,PASS,
+param_train_test_KS,seed27:P2b_trend_strength_reg,0.09,PASS,
+param_train_test_KS,seed27:P4b_dominant_period_reg,0.0056,PASS,
+param_train_test_KS,seed27:P5b_local_dependence_reg,0.0024,PASS,
+prompt_template_only,seed27,1,PASS,
+prompt_label_text_leakage,seed27,0,PASS,
+unseen_signature_collision,seed27,0,PASS,"REGIME is excluded from the signature probe (shares (1,1,0) with TP) and used for the arrangement probe instead"
+metadata_outside_input,seed27,1,PASS,probes read frozen representations of ctx only; latents live in pool_s*.jsonl
+binary_label_balance,seed27:P1_trend_direction,0.55,PASS,
+binary_label_balance,seed27:P3_periodicity_present,0.667,PASS,
+binary_label_balance,seed27:P7_anomaly_present,0.5,PASS,
+binary_label_balance,seed27:P9_changepoint_present,0.5,PASS,

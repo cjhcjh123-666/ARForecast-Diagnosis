@@ -1,0 +1,41 @@
+15:56:28 gpu2 start olmo2_7b pretrained s27
+15:56:28 gpu3 start deepseek_v2_lite random s17
+15:56:28 gpu4 start deepseek_v2_lite pretrained s27
+15:56:28 gpu5 start deepseek_v2_lite random s27
+15:56:28 gpu6 start llama32_3b pretrained s7
+15:56:28 gpu1 start llama31_8b random s17
+15:56:28 gpu0 start gemma2_9b random s27
+15:56:28 gpu7 start llama32_3b random s7
+15:57:47 gpu6 done llama32_3b pretrained s7
+15:57:48 gpu6 start llama32_3b pretrained s17
+15:58:30 gpu4 done deepseek_v2_lite pretrained s27
+15:58:33 gpu4 start llama32_3b random s17
+15:58:50 gpu6 done llama32_3b pretrained s17
+15:58:51 gpu2 done olmo2_7b pretrained s27
+15:58:53 gpu6 start gemma2_2b random s7
+15:58:53 gpu2 start gemma2_2b pretrained s7
+16:00:03 gpu2 done gemma2_2b pretrained s7
+16:00:03 gpu2 start gemma2_2b pretrained s17
+16:00:04 gpu7 done llama32_3b random s7
+16:00:08 gpu7 start mistral_7b_v03 pretrained s7
+16:01:23 gpu2 done gemma2_2b pretrained s17
+16:01:28 gpu2 start mistral_7b_v03 random s7
+16:01:48 gpu4 done llama32_3b random s17
+16:01:48 gpu4 start deepseek_llm_7b pretrained s7
+16:02:04 gpu4 retry deepseek_llm_7b pretrained s7 rc=1
+16:02:05 gpu6 done gemma2_2b random s7
+16:02:08 gpu6 start deepseek_llm_7b random s7
+16:02:56 gpu7 done mistral_7b_v03 pretrained s7
+FAILED deepseek_llm_7b pretrained s7
+16:03:33 gpu1 done llama31_8b random s17
+16:03:38 gpu1 start olmo2_13b pretrained s7
+16:06:39 gpu0 start deepseek_v2_lite random s17
+16:06:39 gpu4 start deepseek_v2_lite random s27
+16:06:39 gpu7 start mistral_7b_v03 random s7
+FAILED deepseek_llm_7b pretrained s7
+FAILED deepseek_llm_7b random s7
+FAILED olmo2_13b pretrained s7
+16:13:06 gpu7 done mistral_7b_v03 random s7
+16:17:46 gpu0 done deepseek_v2_lite random s17
+16:17:46 gpu4 done deepseek_v2_lite random s27
+BATCH_DRIVER_DONE
