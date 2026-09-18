@@ -1,0 +1,1722 @@
+你现在继续在项目：
+
+/9950backfile/chenjiahui/ARForecast-Diagnosis
+
+并需要读取和继承当前已经存在的：
+
+docs/tsqa_evidence/
+results/tsqa_evidence/
+results/temporal_abstraction/corrected_v2/
+
+以及真实时序数据仓库：
+
+/public/chenjiahui/波数据时序基座大模型/
+
+重点数据目录：
+
+/public/chenjiahui/波数据时序基座大模型/data/Timeseries-PILE/
+
+==================================================
+0. 本轮任务重新明确
+==================================================
+
+我们现在不是继续做 3 条 demo。
+
+目标是正式构建：
+
+Real-World Evidence-Family Time-Series QA Benchmark v1
+
+核心科学问题：
+
+1. 面对真实世界时序，
+   language model 到底能够读取哪些 temporal information？
+
+2. 面对同一份时序、不同自然语言问题，
+   模型能否选择并使用正确的 temporal evidence？
+
+3. 当与当前问题相关的证据发生变化时，
+   模型能否正确更新答案？
+
+4. 当只有无关证据发生变化时，
+   模型能否正确保持答案？
+
+5. language-model pretraining
+   究竟使哪些能力变得更可读 / 更容易被使用？
+
+Benchmark 不是为了做 leaderboard SOTA。
+
+它是一个：
+
+controlled diagnostic benchmark
+
+用于分析：
+
+temporal information accessibility
++
+question-conditioned evidence use
++
+native QA behavior
++
+pretraining attribution
+
+==================================================
+1. Benchmark 必须拆成两个 Track
+==================================================
+
+这是正式设计，不能把两类数据混着报告。
+
+--------------------------------------------------
+Track R：Observed Real QA
+--------------------------------------------------
+
+数据必须来自真实采集记录。
+
+不能修改原始时序。
+
+允许：
+
+- 截取合法时间窗口
+- 保留/选择通道
+- 保留原始 timestamp
+- 合理的、记录清楚的单位转换
+- 为显示精度做事先固定的舍入
+
+不允许为了制造答案：
+
+- 插入异常
+- 移动事件
+- 修改峰值
+- 拼接假的 regime
+- 人为改变周期
+- 重新排列数值
+
+这一 Track 回答：
+
+在未经人工改变的真实时序上，
+LLM 能否回答问题？
+
+--------------------------------------------------
+Track I：Evidence Intervention QA
+--------------------------------------------------
+
+底层仍然必须来自真实时序记录。
+
+但是允许进行受控 intervention：
+
+x -> T(x)
+
+目的不是伪装成真实采集数据，
+而是建立可以验证因果式行为关系的测试：
+
+q_target：
+gold 必须变化
+
+q_control：
+gold 必须保持
+
+所有 intervention 样本必须明确标记：
+
+derived_from_real = true
+intervention_type = ...
+source_record_id = ...
+
+论文和数据卡中不能将 Track I
+称为未经修改的 real-world observation。
+
+==================================================
+2. 先完整盘点真实数据，暂时不要跑目标模型
+==================================================
+
+第一步不是写更多 QA。
+
+完整审计：
+
+/public/chenjiahui/波数据时序基座大模型/data/Timeseries-PILE/
+
+以及仓库中其他真实时序数据目录。
+
+建立：
+
+docs/tsqa_evidence/10_real_data_inventory.md
+
+和：
+
+results/tsqa_evidence/real_v1/source_inventory.csv
+
+每个实际数据源必须记录：
+
+dataset_name
+local_path
+source_project
+upstream_url / citation
+domain
+real_vs_synthetic
+number_of_records
+number_of_channels
+sampling_rate
+timestamp_available
+units
+record/group identifier
+existing labels
+event labels
+anomaly labels
+original split
+license
+redistribution status
+local preprocessing
+source version
+file hashes
+known lineage gaps
+
+必须明确区分：
+
+REAL
+DERIVED_REAL
+SYNTHETIC
+UNKNOWN
+
+主 benchmark 只允许：
+
+REAL
+
+和明确记录来源后的：
+
+DERIVED_REAL。
+
+UNKNOWN 不进入正式 benchmark。
+
+==================================================
+3. 数据源选择标准
+==================================================
+
+不要因为某个数据集方便就全用一个 domain。
+
+正式 v1 至少覆盖多个真实领域。
+
+优先从服务器已有数据中选择：
+
+- electricity / energy
+- industrial / sensor
+- environment / weather
+- physiological / biomedical signal
+- traffic / mobility
+
+实际有哪些由 inventory 决定。
+
+不是强制五类全部存在。
+
+目标：
+
+至少 4 个彼此明显不同的真实 domain，
+最好 5 个。
+
+每个 domain 至少有一个来源清楚、
+group/split 信息可追踪的数据源。
+
+不要先写死数据集名称，
+必须以服务器实际文件和 upstream lineage 为准。
+
+==================================================
+4. TSB-UAD / MBA_ECG801 专项处理
+==================================================
+
+继续追溯：
+
+MBA_ECG801_data.out
+
+需要尽力确认：
+
+1. 它对应哪个 upstream ECG record；
+2. upstream channel；
+3. 原始采样率；
+4. TSB-UAD 是否进行了 resampling；
+5. 是否 filtering / normalization / segmentation；
+6. pointwise anomaly label 如何从 upstream annotation 得到；
+7. 本地文件和 upstream 文件的映射；
+8. 数据许可与派生文件再分发条件。
+
+保存：
+
+docs/tsqa_evidence/lineage/TSB_UAD_MBA_ECG801.md
+
+如果能确认：
+
+允许进入正式 anomaly QA。
+
+如果到 protocol lock 时仍无法完整确认：
+
+不要阻塞整个 benchmark。
+
+处理为：
+
+status = LINEAGE_PARTIAL
+
+允许：
+- 内部 supervised diagnostic；
+- sample-index based analysis；
+- 明确写作 “TSB-UAD benchmark-labelled PVC anomaly”。
+
+不允许：
+- 换算秒数；
+- 推广为一般 clinical diagnosis；
+- 进入要求完整 provenance 的主 native QA headline；
+- 对外重新分发不确定许可的派生数据。
+
+不要把 TSB-UAD 代码 Apache-2.0
+误认为数据本身的许可。
+
+==================================================
+5. Benchmark QA taxonomy
+==================================================
+
+不要按数据集来定义任务。
+
+跨 domain 使用统一能力 taxonomy。
+
+正式 v1 使用以下六类：
+
+A. Global Structure QA
+B. Numeric Reading QA
+C. Temporal Localization QA
+D. Temporal Relation QA
+E. Multi-evidence Composition QA
+F. Conditional Reasoning QA
+
+--------------------------------
+A. Global Structure
+--------------------------------
+
+例如：
+
+- 指定区间总体上升/下降/近似稳定？
+- 主要重复间隔是多少？
+- 哪一段波动更强？
+
+只允许使用从可见数据可以稳定计算的定义。
+
+--------------------------------
+B. Numeric Reading
+--------------------------------
+
+例如：
+
+- 指定区间均值是多少？
+- 两区间均值差是多少？
+- 最大值/最小值是多少？
+- 两通道中哪一个平均值更高？
+
+这一类必须保留。
+
+因为：
+
+current-value/statistical numerical extraction
+
+与：
+
+future forecasting
+
+不是一回事。
+
+--------------------------------
+C. Temporal Localization
+--------------------------------
+
+例如：
+
+- 最大值在哪个时间区间？
+- 最大局部偏离在哪个区间？
+- 已有权威事件标签时，事件在哪？
+- 变化点在哪？
+
+不能把隐藏注入位置直接当成真实世界 gold。
+
+--------------------------------
+D. Temporal Relation
+--------------------------------
+
+例如：
+
+- A/B 哪一条重复间隔更长？
+- 两通道哪个先变化？
+- 哪个区间波动更大？
+- 哪个事件先发生？
+
+--------------------------------
+E. Multi-evidence Composition
+--------------------------------
+
+要求同时读取两个及以上事实。
+
+例如：
+
+“哪项描述同时正确概括
+该区间的重复结构和局部事件位置？”
+
+不能只预测一个 dataset family label。
+
+--------------------------------
+F. Conditional Reasoning
+--------------------------------
+
+问题明确给出条件：
+
+- 先选择均值更高的区间，
+  再回答该区间峰值位置；
+
+- 在变化更明显的通道中，
+  判断哪个事件先发生；
+
+- 在指定阈值条件成立的窗口中，
+  找出波动最大的区段。
+
+这里才是真正的：
+
+question-conditioned multi-step temporal QA。
+
+==================================================
+6. 同一真实时序必须支持多个问题
+==================================================
+
+这是硬约束。
+
+不能：
+
+一条时序只对应一个固定 task label。
+
+每个正式 family 必须围绕同一份 evidence
+产生多个不同问题。
+
+至少覆盖 3 种 ability type。
+
+至少包含：
+
+- 一个 target question
+- 一个 control question
+
+并且至少一部分 family 中：
+
+相同 answer type
++
+不同 queried region / channel / operator
+
+例如：
+
+同一 ECG / sensor window：
+
+Q1：
+前半段峰值在哪个四分位？
+
+Q2：
+后半段峰值在哪个四分位？
+
+Q3：
+前后哪段均值更高？
+
+Q4：
+整体重复间隔是多少？
+
+同一份 evidence，
+question 真正决定模型应该读什么。
+
+==================================================
+7. Evidence-family 四格正式定义
+==================================================
+
+每个 intervention family：
+
+t0 = x + q_target -> a
+c0 = x + q_control -> b
+t1 = T(x) + q_target -> a'
+c1 = T(x) + q_control -> b'
+
+必须满足：
+
+target：
+acceptable answer sets disjoint
+
+G_t0 ∩ G_t1 = empty
+
+不能只检查：
+
+a != a'
+
+尤其连续数值题必须保证：
+
+|a' - a| >
+tolerance(a) + tolerance(a')
+
+Control：
+
+semantic gold 完全保持：
+
+G_c0 = G_c1
+
+所有判断都针对：
+
+模型最终实际看到的
+serialized / rounded / resampled input
+
+重新计算。
+
+不能只根据修改前原始高精度数组判断。
+
+==================================================
+8. Intervention 设计原则
+==================================================
+
+Intervention 必须改变一个明确、可观测事实。
+
+优先使用局部和最小修改。
+
+例如：
+
+- 移动一个明确局部事件；
+- 对指定区间添加固定 offset；
+- 对一个通道做局部 amplitude change；
+- 交换两个已定义区间；
+- 改变局部事件顺序；
+- 修改一个区间的 scale。
+
+每个 intervention 必须运行：
+
+target gold recomputation
+control gold recomputation
+
+只有同时满足：
+
+target changes
+control invariant
+
+才进入正式 manifest。
+
+如果变换同时改变了 control 所问事实：
+
+丢弃这个 family，
+不是硬保留旧 gold。
+
+==================================================
+9. Track R 不需要 intervention 才能成立
+==================================================
+
+Observed Real QA 本身独立报告。
+
+它的核心测试是：
+
+same evidence
++
+different questions
+
+至少报告：
+
+single-cell accuracy
+question-switch joint accuracy
+
+因此不能因为某个真实数据源不适合安全 intervention
+就从 benchmark 中删除。
+
+Intervention 是额外 diagnostic track，
+不是“真实 QA”的唯一形式。
+
+==================================================
+10. 答案形式
+==================================================
+
+主 benchmark：
+
+优先采用：
+
+2-choice
+4-choice
+
+保证不同模型可直接比较。
+
+另外预注册一部分：
+
+short numeric / short temporal-span answers
+
+用于检查：
+
+选择题表现
+是否依赖候选提示。
+
+主结果不用自由长文本解释。
+
+不使用 LLM-as-judge 作为主要评分器。
+
+==================================================
+11. Answer choice 构造
+==================================================
+
+重要：
+
+t0/t1：
+
+question 文本原则上相同；
+candidate semantic set 相同；
+candidate order 相同。
+
+c0/c1 同理。
+
+只有 evidence 变化。
+
+先建立 semantic option set，
+再进行 position assignment。
+
+不能根据当前 gold
+重新生成一套更“适合”它的选项。
+
+==================================================
+12. Answer position balance
+==================================================
+
+不能简单写：
+
+hash -> permutation
+
+然后假设已经平衡。
+
+实现：
+
+stable hash
++
+constrained balanced assignment。
+
+在：
+
+domain × task_type × split
+
+内：
+
+binary：
+A/B 尽量 50/50
+
+4-choice：
+A/B/C/D 尽量 25/25/25/25
+
+同时分别审计：
+
+t0
+c0
+t1
+c1
+
+的位置分布。
+
+保存固定：
+
+option_manifest.jsonl
+
+正式测试后不得修改。
+
+禁止使用 Python 内置 hash()
+作为跨进程稳定 seed。
+
+使用 SHA-256 / blake2 等稳定哈希。
+
+==================================================
+13. Question-discriminative subset
+==================================================
+
+正式标记一个 subset：
+
+same evidence
+same answer type
+different question
+different semantic gold
+
+用于更严格地测试：
+
+模型是否真的根据问题读取不同信息。
+
+这不是新 leaderboard metric。
+
+仍报告：
+
+QSJA
+
+但额外列：
+
+QSJA on question-discriminative subset
+
+和 sample count。
+
+==================================================
+14. Benchmark 主指标
+==================================================
+
+沿用：
+
+Four-cell Joint Success (FCJS)
+
+FCJS =
+mean_i[
+ C_t0 *
+ C_c0 *
+ C_t1 *
+ C_c1
+]
+
+四格全部答对才算成功。
+
+但正式描述只能写成：
+
+joint success on the four-cell behavioral test
+
+不要写成：
+
+pure understanding score
+或
+causal understanding score。
+
+==================================================
+15. 必须同时报告
+==================================================
+
+FCJS 不能单独出现。
+
+必须同时报告：
+
+Acc_t0
+Acc_c0
+Acc_t1
+Acc_c1
+
+TUS =
+mean(C_t0 * C_t1)
+
+CIS =
+mean(C_c0 * C_c1)
+
+QSJA =
+1/(2N) *
+sum[
+ C_t0*C_c0
+ +
+ C_t1*C_c1
+]
+
+VOR
+
+以及：
+
+TUS | t0 correct
+CIS | c0 correct
+
+prediction change rate
+spurious control change rate
+
+最后两项只作行为诊断，
+不能作为成功率。
+
+==================================================
+16. Question-only 的解释必须锁死
+==================================================
+
+Question-only 继续做。
+
+但是：
+
+由于 target before/after 问题文本相同
+而正确答案不同，
+
+deterministic question-only model
+理论上无法同时满足 t0 与 t1。
+
+因此：
+
+禁止使用：
+
+FCJS_full > FCJS_question-only
+
+作为“模型理解 temporal evidence”的主要证据。
+
+Question-only 主要报告：
+
+- cell accuracy
+- answer distribution
+- position bias
+- language/template prior
+
+Evidence use
+主要由：
+
+correct update
++
+correct invariance
++
+question switching
+
+综合判断。
+
+==================================================
+17. 连续数值题
+==================================================
+
+连续答案报告：
+
+tolerance accuracy
+
+abs(pred-gold)
+<=
+max(
+ abs_tol,
+ rel_tol*abs(gold)
+)
+
+MAE
+
+NMAE
+
+其中：
+
+scale_task
+只能由 train data 事先确定。
+
+无效数值输出：
+
+accuracy 中计错。
+
+MAE/NMAE：
+
+只在 valid numerical output 上计算，
+同时必须报告：
+
+VOR
+valid N
+full-denominator tolerance success
+
+不得：
+
+- 给 parse fail 填 0
+- 给 parse fail 填 gold
+- 只展示 valid-only MAE 不报 coverage
+
+Pretraining effect：
+
+accuracy:
+P - R
+
+error improvement:
+R_error - P_error
+
+保存 raw delta 和 aligned improvement。
+
+==================================================
+18. 聚合方案现在锁定
+==================================================
+
+避免大数据源支配整体结果。
+
+主 aggregation：
+
+先 family level
+
+然后：
+
+group 内 family 平均
+
+再：
+
+task_type 内 group macro average
+
+再：
+
+domain 内 task_type macro average
+
+最后：
+
+domain macro average。
+
+同时保留：
+
+raw pooled descriptive score
+
+但不能作为 headline。
+
+每个 domain / task
+必须报告：
+
+#records
+#groups
+#families
+#QA items
+
+==================================================
+19. Bootstrap
+==================================================
+
+bootstrap unit：
+
+根据真实 source
+选择最高合理独立 unit：
+
+patient
+device
+station
+original_record
+
+同一 group 的：
+
+- windows
+- questions
+- four cells
+- interventions
+- paraphrases
+
+必须整体一起抽样。
+
+P/R：
+
+使用同一 bootstrap indices。
+
+报告：
+
+95% cluster bootstrap CI。
+
+同时报告：
+
+number of independent groups。
+
+如果 group 太少，
+明确标注 CI 不稳定。
+
+==================================================
+20. 异常数据新的正式规则
+==================================================
+
+删除旧规则：
+
+“信息不完整可以放 supervised diagnostic”
+
+改为分级：
+
+A. 仅缺 sampling rate：
+可以使用 sample index；
+不能换算秒/Hz。
+
+B. 缺 domain anomaly semantics：
+可以做纯数值 QA；
+不能声称 anomaly understanding。
+
+C. 缺 record/patient/device lineage：
+不能进入需要独立 split 的 confirmatory result。
+
+D. 来源或 license 无法确认：
+隔离；
+不进入公开 benchmark release。
+
+E. downstream label mapping 不完整：
+可以保留内部 exploratory analysis，
+但不能进入 headline confirmatory QA。
+
+监督训练不能修复 provenance 缺失。
+
+==================================================
+21. 先建立 dataset/task eligibility matrix
+==================================================
+
+输出：
+
+results/tsqa_evidence/real_v1/
+dataset_task_eligibility.csv
+
+每一行：
+
+dataset × task type
+
+字段：
+
+source_verified
+license_verified
+group_verified
+sampling_verified
+units_verified
+gold_recomputable
+intervention_safe
+native_QA_eligible
+supervised_QA_eligible
+release_eligible
+reason
+
+只有 eligibility=PASS
+的组合进入正式 benchmark。
+
+不能因为某项好跑就越过 gate。
+
+==================================================
+22. 正式 benchmark 规模
+==================================================
+
+不要现在无脑做到最大。
+
+先 inventory 后计算可用 group 数。
+
+在任何目标 LM 正式测试之前，
+根据数据量和算力一次性锁定。
+
+最低目标：
+
+至少 4 real domains。
+
+每个 domain：
+至少 2 个有意义 task categories
+（如果数据不支持，不强造）
+
+每个正式 task：
+test 至少有足够独立 groups，
+并报告 group 数而不仅是 family 数。
+
+目标 benchmark：
+
+train
+validation
+test
+
+按 group split。
+
+不能：
+
+先随机切 window
+再发现同一患者/设备进入多个 split。
+
+同一个 original group
+产生的：
+
+base
+intervention
+all questions
+all option permutations
+
+全部属于一个 split。
+
+==================================================
+23. 训练 / 测试 family 构建
+==================================================
+
+先确定：
+
+group split
+
+再从每个 split 中构造 family。
+
+所有 gold：
+
+由 deterministic program
+或权威 source labels 获得。
+
+Language model：
+
+不得生成 gold。
+
+允许 language model
+只辅助产生 paraphrase candidate，
+然后通过人工/规则审核。
+
+==================================================
+24. Protocol lock
+==================================================
+
+在第一次正式目标模型测试之前，
+生成：
+
+docs/tsqa_evidence/
+20_REAL_BENCHMARK_SPEC_V1_LOCKED.md
+
+configs/tsqa_evidence/
+real_v1_locked.yaml
+
+results/tsqa_evidence/real_v1/
+manifest_sha256.txt
+
+必须锁：
+
+data sources
+versions
+task definitions
+gold programs
+family construction
+interventions
+splits
+option manifests
+numeric tolerances
+aggregation
+metrics
+bootstrap
+models
+prompts
+input serialization
+answer parser
+
+之后：
+
+不得因模型结果
+修改 benchmark。
+
+真正 bug：
+
+升级：
+
+v1.0 -> v1.0.1
+
+记录：
+
+CHANGELOG
+
+然后全部受影响模型重跑。
+
+==================================================
+25. Protocol lock 前的 Validity Gates
+==================================================
+
+全部自动化检查。
+
+至少包括：
+
+1. source provenance PASS
+2. license status recorded
+3. group leakage = 0
+4. duplicate / near-duplicate audit
+5. gold recomputation PASS
+6. serialized-input gold consistency PASS
+7. target acceptable sets disjoint
+8. control gold invariant
+9. t0/t1 candidate set identical
+10. t0/t1 option position identical
+11. c0/c1 same
+12. answer position balance
+13. question-only evidence removal PASS
+14. no answer word leakage
+15. no hidden label in prompt
+16. intervention modifies only allowed region/features
+17. source domain/units preserved
+18. numeric tolerance non-overlap
+19. metric unit tests PASS
+20. FCJS/TUS/CIS/QSJA consistency assertions PASS
+
+指标一致性至少检查：
+
+FCJS <= TUS
+FCJS <= CIS
+FCJS <= QSJA
+
+以及：
+
+FCJS >= max(0, TUS + CIS - 1)
+
+在相同样本权重下。
+
+==================================================
+26. 必须人工审阅真实样例
+==================================================
+
+自动程序自己验证自己不够。
+
+在 protocol lock 前：
+
+按固定 random seed
+从每个：
+
+domain × task_type
+
+抽取至少若干真实 family。
+
+导出：
+
+docs/tsqa_evidence/
+21_HUMAN_REVIEW_EXAMPLES.md
+
+每个样例展示：
+
+- dataset
+- record/group
+- actual visible series
+- timestamp/channel/unit
+- q_target
+- q_control
+- semantic gold
+- candidate options
+- T(x)
+- transformed gold
+- target changed?
+- control invariant?
+- gold derivation
+
+必须人工可读。
+
+不要只输出 JSON。
+
+==================================================
+27. 三种接口
+==================================================
+
+正式实验继续区分：
+
+A. Controlled representation readout
+
+B. Question-conditioned supervised QA
+
+C. Native QA
+
+--------------------------------
+A
+--------------------------------
+
+回答：
+
+information accessible?
+
+只在适合的同样本 temporal property 上使用。
+
+不要声称它自己会理解自然语言问题。
+
+--------------------------------
+B
+--------------------------------
+
+回答：
+
+给定自然语言 question，
+训练一个共享 question-conditioned interface 后，
+temporal representation 能否按问题被利用？
+
+这是 P/R attribution 的主要接口。
+
+question/option branch：
+
+固定 official pretrained LM。
+
+P-temporal
+vs
+R-temporal：
+
+唯一变化是 temporal representation source。
+
+必须共享：
+
+same family
+same split
+same question vectors
+same options
+same head architecture
+same optimization budget
+same training order
+same head seeds
+
+Question branch cache
+字节/hash 相同。
+
+Temporal branch
+绝不能包含 question/options/gold。
+
+QA scorer
+必须有真实 question × evidence interaction。
+
+--------------------------------
+C
+--------------------------------
+
+Native zero-shot QA。
+
+使用：
+
+official base checkpoints。
+
+主表：
+
+free generation strict parsing
+
+并行补充：
+
+constrained-choice log-prob scoring。
+
+这两个接口分开报告，
+不择优合并。
+
+==================================================
+28. 正式模型矩阵
+==================================================
+
+B：
+
+完整 10 个 existing open base LM：
+
+Qwen3-8B
+Llama-3.1-8B
+Llama-3.2-3B
+Gemma-2-9B
+Gemma-2-2B
+Mistral-7B-v0.3
+DeepSeek-LLM-7B
+DeepSeek-V2-Lite
+OLMo-2-7B
+OLMo-2-13B
+
+每个：
+
+pretrained temporal
+vs
+matched random temporal
+
+head seeds：
+
+7 / 17 / 27
+
+优先复用 feature cache。
+
+C：
+
+五个 representative official base checkpoints：
+
+Qwen3-8B
+Llama-3.1-8B
+Gemma-2-9B
+DeepSeek-V2-Lite
+OLMo-2-7B
+
+先完成全部 benchmark core test。
+
+不要根据模型结果决定是否扩展。
+
+==================================================
+29. Smoke test 与正式模型严格隔离
+==================================================
+
+Benchmark protocol lock 前：
+
+只能使用：
+
+- deterministic oracle
+- handcrafted baseline
+- random-choice baseline
+- question-only structural checks
+- 独立 dev-only smoke data
+
+不得查看：
+
+正式 target LM
+在正式 test 上的结果。
+
+Smoke 只验证：
+
+load
+tokenization
+prompt length
+parser
+candidate scorer
+batch consistency
+cache
+metric pipeline
+
+不得用 smoke accuracy
+调 task/gold/intervention。
+
+==================================================
+30. Benchmark baseline
+==================================================
+
+必须有：
+
+Random Choice
+
+Majority Answer
+
+Question Only
+
+Deterministic Oracle
+（应接近 100%，否则 benchmark 自己有 bug）
+
+Handcrafted / numerical feature reference
+仅用于检验任务是否可从数据识别。
+
+它不是竞争 SOTA。
+
+如果：
+
+handcrafted / oracle
+都无法稳定解题，
+
+先检查 task validity，
+不能直接解释为 LLM 能力不足。
+
+==================================================
+31. 正式结果的分析顺序
+==================================================
+
+不要先找“最好看的数字”。
+
+依次回答：
+
+Q1.
+在原始真实时序 Track R 上，
+模型能回答什么？
+
+Q2.
+同一证据换不同问题，
+Question-Switch 是否成功？
+
+Q3.
+在 Track I 中，
+相关证据改变时，
+Target Update 是否正确？
+
+Q4.
+无关证据改变时，
+Control 是否正确保持？
+
+Q5.
+四格整体 FCJS 如何？
+
+Q6.
+哪些能力主要受：
+parse / output interface
+影响？
+
+Q7.
+P temporal representation
+相对 R temporal representation
+在哪些 task/domain 有稳定 gain？
+
+Q8.
+pretraining gain 是：
+universal
+还是 selective？
+
+Q9.
+representation accessibility
+是否能转化到
+question-conditioned use？
+
+Q10.
+native interface
+与 supervised diagnostic
+在哪些具体同样本任务上发生差异？
+
+不要提前假设答案。
+
+==================================================
+32. 不要重新陷入“数值 vs 结构”二分
+==================================================
+
+当前已有证据已经说明：
+
+dominant-period regression
+也可以从 pretrained representation
+明显改善。
+
+因此禁止笼统写：
+
+LLM understands structure
+but cannot do numbers.
+
+必须区分：
+
+- observed-value/statistical extraction
+- latent temporal property estimation
+- relation/composition
+- question-conditioned evidence use
+- future numerical extrapolation
+
+它们不是同一能力。
+
+==================================================
+33. corrected_v2 Level-2
+==================================================
+
+当前正在运行的 corrected_v2
+自然跑完。
+
+不要因为本轮 benchmark 工作
+停止或重启。
+
+跑完后：
+
+只进行有效结果汇总。
+
+它是 supporting mechanistic evidence，
+不是新 benchmark 的数据源。
+
+==================================================
+34. 工程输出目录
+==================================================
+
+新增：
+
+results/tsqa_evidence/real_v1/
+    inventory/
+    manifests/
+    gold/
+    options/
+    interventions/
+    validity/
+    baselines/
+    diagnostic/
+    native/
+    predictions/
+    tables/
+    figures/
+
+docs/tsqa_evidence/
+    10_real_data_inventory.md
+    11_dataset_lineage.md
+    12_dataset_task_eligibility.md
+    13_task_cards.md
+    14_intervention_cards.md
+    15_metrics_spec.md
+    16_validity_report.md
+    17_human_review_examples.md
+    20_REAL_BENCHMARK_SPEC_V1_LOCKED.md
+    30_results.md
+    31_failures_and_boundaries.md
+    32_scientific_conclusions.md
+
+configs/tsqa_evidence/
+    real_v1_locked.yaml
+
+==================================================
+35. Machine-readable predictions
+==================================================
+
+每一个正式预测保存：
+
+benchmark_version
+model
+checkpoint_revision
+interface
+pretrained_or_random
+seed
+domain
+dataset
+group_id
+family_id
+series_id
+variant_id
+question_id
+task_type
+question
+semantic_options
+option_order
+gold_semantic
+gold_position
+raw_response
+parsed_semantic
+parsed_position
+valid_output
+correct
+latency
+error_type
+
+不要只留最终平均分。
+
+==================================================
+36. Benchmark release 不直接复制受限数据
+==================================================
+
+对于不能重新发布原始数据的数据源：
+
+manifest 只保存：
+
+source identifier
+record/group id
+time bounds
+channel ids
+processing config
+gold
+questions
+hashes
+
+并提供：
+
+reconstruction scripts。
+
+不要未经许可把原始数据
+直接打进 GitHub benchmark release。
+
+==================================================
+37. 本轮不要改论文
+==================================================
+
+这轮优先级：
+
+1. real-data audit
+2. eligibility
+3. task/gold/intervention implementation
+4. metric implementation
+5. validity gates
+6. human review
+7. protocol lock
+8. formal experiment
+9. result analysis
+
+不要求：
+
+重写 title
+abstract
+introduction
+main.tex
+
+等正式结果出来再决定 paper framing。
+
+==================================================
+38. 第一阶段完成后先给我一次汇报
+==================================================
+
+在第一次正式目标 LM test 之前，
+必须先给我：
+
+A. 数据源表
+
+实际选择了哪些真实数据；
+哪些被排除；
+为什么。
+
+B. Benchmark 规模
+
+domain
+dataset
+groups
+families
+questions
+task types
+Track R / Track I 数量。
+
+C. 12–20 个真实 QA family 样例
+
+包含真实数值、
+问题、
+gold、
+intervention、
+四格答案。
+
+D. 所有 validity gates
+
+PASS / FAIL。
+
+E. 答案位置统计。
+
+F. 指标 unit tests。
+
+G. TSB-UAD lineage 最终状态。
+
+H. protocol SHA-256。
+
+如果任何核心 validity gate FAIL：
+
+不要启动正式模型。
+
+修测量错误，
+然后重新生成 benchmark。
+
+==================================================
+39. 正式评测完成后的最终交付
+==================================================
+
+最终生成：
+
+deliverables/
+Real_TSQA_Evidence_v1_review.zip
+
+必须包含：
+
+1. START_HERE_zh.md
+2. REAL_BENCHMARK_SPEC_V1_LOCKED.md
+3. source_inventory.csv
+4. dataset_task_eligibility.csv
+5. dataset lineage docs
+6. task cards
+7. intervention cards
+8. human-readable real examples
+9. manifest statistics
+10. option-balance audit
+11. validity report
+12. all machine-readable prediction files
+13. metric tables
+14. P/R paired tables
+15. bootstrap CI tables
+16. native QA results
+17. interface-comparison table
+18. failure taxonomy
+19. scientific conclusions
+20. exact reproduction commands
+21. git commit/revision
+22. manifest/config SHA-256
+
+不要打包：
+
+model checkpoints
+巨大的 hidden-state caches
+无权重新分发的原始数据。
+
+==================================================
+40. 最终报告不能只给 GO/NO-GO
+==================================================
+
+必须回答：
+
+1. 最终 benchmark 使用了哪些真实领域？
+2. 每个数据来源是否完全可追踪？
+3. 哪些 task 是纯可观察事实？
+4. 哪些依赖 source-provided labels？
+5. 哪些 intervention 是真实数据上的受控变体？
+6. observed real QA 的结果是什么？
+7. question switching 的结果是什么？
+8. target update 的结果是什么？
+9. control invariance 的结果是什么？
+10. FCJS 的结果是什么？
+11. 哪些结果受 output parsing 影响？
+12. P/R temporal representation 的差异是什么？
+13. 哪些能力跨模型一致？
+14. 哪些能力明显 model-dependent？
+15. 哪些能力没有 pretraining benefit？
+16. supervised question-conditioned interface 和 native interface 的差异是什么？
+17. 当前数据支持怎样的 scientific claim？
+18. 哪些 claim 目前不支持？
+
+==================================================
+41. 现在立即执行
+==================================================
+
+STEP 1
+只读盘点“波数据时序基座大模型”真实数据。
+
+STEP 2
+完成 source / license / group / label lineage table。
+
+STEP 3
+形成 dataset × task eligibility matrix。
+
+STEP 4
+从明确 PASS 的真实数据源
+构建正式 candidate benchmark。
+
+STEP 5
+实现最终版 FCJS/TUS/CIS/QSJA/VOR
+及 numeric metrics。
+
+STEP 6
+实现四格 acceptable-set gate、
+固定 candidate-set 和 answer-position balancing。
+
+STEP 7
+运行 benchmark 自身 validity tests。
+
+STEP 8
+导出人工审阅真实样例。
+
+STEP 9
+在没有查看正式目标模型 test 结果的情况下
+锁定：
+
+manifest
+protocol
+metrics
+options
+models
+prompts
+
+STEP 10
+把“正式模型评测前汇报”先发给我。
+
+如果所有硬 gate PASS，
+继续正式运行 B 和 C。
+
+开始执行。

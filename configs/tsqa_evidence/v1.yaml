@@ -1,0 +1,36 @@
+dataset_version: tsqa-evidence-v1
+protocol_version: tsqa-evidence-protocol-v1
+dataset_seed: 20260918
+families:
+  train: 400
+  validation: 100
+  iid_test: 200
+  composition_ood_test: 200
+questions_per_family: 12
+visible_precision_decimals: 3
+timestamps: {start: 0, stop_inclusive: 47, interval: 1, unit: step}
+channels: [sensor_A, sensor_B, sensor_C, sensor_D]
+value_unit: arbitrary_units
+conditions: [FULL, RELEVANT_EDIT, IRRELEVANT_EDIT, QUESTION_ONLY, CROSS_CONTROL]
+head_seeds: [7, 17, 27]
+candidate_scorer:
+  fixed_projection_dim: 128
+  hidden_dim: 64
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.01
+  batch_size: 256
+  fixed_epochs: 100
+native_subset:
+  families_per_test_split: 80
+  main_questions_per_family: 4
+native_models: [qwen3_8b_base, llama31_8b, gemma2_9b, deepseek_v2_lite, olmo2_7b]
+diagnostic_models: [qwen3_8b_base, llama31_8b, llama32_3b, gemma2_9b, gemma2_2b,
+  mistral_7b_v03, deepseek_llm_7b, olmo2_7b, olmo2_13b, deepseek_v2_lite]
+bootstrap_unit: family_id
+metric_direction:
+  accuracy: higher
+  balanced_accuracy: higher
+  r2: higher
+  mae: lower
+  nmae: lower

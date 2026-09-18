@@ -1,0 +1,147 @@
+benchmark_version: real_tsqa_v1.0
+protocol_status: LOCKED_BEFORE_TARGET_MODEL_TEST
+lock_date_utc: 2026-09-18
+dataset_seed: 20260918
+source_manifest: results/tsqa_evidence/real_v1/source_inventory.csv
+family_manifest: results/tsqa_evidence/real_v1/manifests/families_candidate.jsonl
+item_manifest: results/tsqa_evidence/real_v1/manifests/item_manifest.jsonl
+split_manifest: results/tsqa_evidence/real_v1/manifests/split_manifest.csv
+gold_manifest: results/tsqa_evidence/real_v1/gold/gold_manifest.jsonl
+option_manifest: results/tsqa_evidence/real_v1/options/option_manifest.jsonl
+intervention_manifest: results/tsqa_evidence/real_v1/interventions/intervention_manifest.jsonl
+scale:
+  domains: 4
+  datasets: 4
+  groups: 264
+  families: 264
+  train_families: 193
+  validation_families: 29
+  test_families: 42
+  qa_items: 2112
+  track_r_items: 1584
+  track_i_items: 528
+  questions_per_family: 6
+task_codes:
+  A: global_structure
+  B: numeric_reading_comparison
+  C: temporal_localization
+  D: temporal_relation
+  E: multi_evidence_composition
+  F: conditional_reasoning
+serialization:
+  language: English
+  format: canonical_compact_JSON
+  decimal_places: 4
+  truncate: false
+  full_and_shuffled_numeric_lexemes_identical: true
+  renderer: tsqa_evidence.real_protocol
+splits:
+  unit: source_group
+  ptb_xl: official_patient_respecting_strat_fold_1_8_train_9_validation_10_test
+  other_sources: sha256_group_assignment_70_10_20
+  descendants_share_split: true
+options:
+  assignment: sha256_stable_constrained_balance
+  stratum: domain_x_task_type_x_split_x_cell
+  paired_question_order_identical: true
+metrics:
+  headline: FCJS
+  required: [Acc_t0, Acc_c0, Acc_t1, Acc_c1, TUS, CIS, QSJA, VOR]
+  diagnostics: [TUS_given_t0_correct, CIS_given_c0_correct, target_prediction_change_rate, control_spurious_change_rate]
+  aggregation: family_then_group_then_task_then_domain_then_domain_macro
+  bootstrap_unit: highest_independent_source_group
+  bootstrap_iterations: 2000
+  bootstrap_seed: 20260918
+  ci: percentile_95
+  numeric:
+    tolerance_rule: abs_error_le_max_abs_tol_rel_tol_times_abs_gold
+    error_metrics_valid_only: true
+    parse_failures_count_wrong_in_full_denominator_accuracy: true
+    nmae_direction: lower_is_better
+interfaces:
+  A:
+    name: controlled_representation_readout
+    representation: frozen_final_layer_mean_pool_nonpadding
+    head: task_specific_linear_readout
+    seeds: [7, 17, 27]
+  B:
+    name: question_conditioned_supervised_QA
+    question_branch: frozen_official_pretrained_checkpoint_same_model_family
+    temporal_branches: [pretrained_temporal, matched_random_temporal]
+    temporal_input_contains: [timestamps, channels, units, visible_values]
+    temporal_input_excludes: [question, options, gold, hidden_labels]
+    temporal_representation: frozen_final_layer_mean_pool_nonpadding
+    question_option_representation: frozen_final_layer_mean_pool_nonpadding
+    scorer: QuestionEvidenceScorer
+    scorer_projection_dim: 128
+    scorer_hidden_dim: 64
+    scorer_interaction: nonlinear_MLP_over_concatenated_projected_question_option_and_temporal_vectors
+    optimizer: AdamW
+    learning_rate: 0.001
+    weight_decay: 0.01
+    batch_size: 256
+    epochs: 100
+    early_stopping: false
+    head_seeds: [7, 17, 27]
+    shared_between_P_R: [families, splits, question_option_cache_bytes, projections, head_architecture, optimizer_budget, minibatch_order, head_seed]
+  C:
+    name: native_zero_shot_QA
+    checkpoints: official_base
+    main: free_generation_strict_parser
+    supplement: constrained_choice_logprob
+    merge_main_and_supplement: false
+    conditions: [full, question_only, shuffled]
+    decoding:
+      do_sample: false
+      max_new_tokens: 8
+      truncation: false
+      chat_template: false
+    parser: tsqa_evidence.real_protocol.parse_strict_choice
+model_matrix_B:
+  - qwen3_8b_base
+  - llama31_8b
+  - llama32_3b
+  - gemma2_9b
+  - gemma2_2b
+  - mistral_7b_v03
+  - deepseek_llm_7b
+  - deepseek_v2_lite
+  - olmo2_7b
+  - olmo2_13b
+model_matrix_C:
+  - qwen3_8b_base
+  - llama31_8b
+  - gemma2_9b
+  - deepseek_v2_lite
+  - olmo2_7b
+native_prediction_schema:
+  - benchmark_version
+  - model
+  - checkpoint_revision
+  - interface
+  - pretrained_or_random
+  - seed
+  - domain
+  - dataset
+  - group_id
+  - family_id
+  - series_id
+  - variant_id
+  - question_id
+  - task_type
+  - question
+  - semantic_options
+  - option_order
+  - gold_semantic
+  - gold_position
+  - raw_response
+  - parsed_semantic
+  - parsed_position
+  - valid_output
+  - correct
+  - latency
+  - error_type
+change_policy:
+  bugfix_version: real_tsqa_v1.0.1
+  rerun_all_affected_models: true
+  score_based_protocol_changes_forbidden: true

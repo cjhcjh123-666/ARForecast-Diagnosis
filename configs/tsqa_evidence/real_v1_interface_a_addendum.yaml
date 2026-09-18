@@ -1,0 +1,36 @@
+addendum_version: real_tsqa_v1.0_interface_a_addendum1
+parent_protocol_sha256: 9369c5678c6f834455d2b2cea04da923d4e3e97b4b45ac16cabc2a368aac028c
+locked_before_interface_a_target_results: true
+representation:
+  source: frozen_final_layer_mean_nonpadding
+  normalization: per_sample_layer_norm_no_fitted_parameters
+input:
+  contains: [timestamps, channels, units, visible_values]
+  excludes: [question, options, gold, hidden_labels]
+heads:
+  grouping: one_multiclass_linear_head_per_task_type
+  label_order: sorted_train_semantic_labels
+  bias: true
+  seeds: [7, 17, 27]
+  paired_initialization_between_P_R: true
+training:
+  split: train
+  optimizer: AdamW
+  learning_rate: 0.001
+  weight_decay: 0.01
+  epochs: 100
+  batch_size: 256
+  early_stopping: false
+  minibatch_order: numpy_default_rng_seed_plus_epoch
+evaluation:
+  split: test
+  tracks: [R, I]
+  metric: accuracy
+  aggregation: family_then_group_then_task_then_domain_then_domain_macro
+  bootstrap_unit: source_group
+  bootstrap_iterations: 2000
+  bootstrap_seed: 20260918
+pairing:
+  pretrained_cache_seed: 7
+  random_cache_seed_matches_head_seed: true
+  shared_between_P_R: [items, splits, task_heads, class_order, initialization, optimizer_budget, minibatch_order, head_seed]
